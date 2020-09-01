@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+              integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+              crossorigin="anonymous">
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+                integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+                crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                crossorigin="anonymous"></script>
+
+        <title>수박 팔아요</title>
+        <link rel="stylesheet" type="text/css" href="week1_product_index.css">
+        <link href="https://fonts.googleapis.com/css2?family=Gothic+A1&display=swap" rel="stylesheet">
+
+        <script>
+            function order() {
+                let o_name = $('#order-name').val();
+                let o_amount = $('#order-amount').val();
+                let o_address = $('#order-address').val();
+                let o_phone = $('#order-phone').val();
+
+                if (o_name == "") {
+                    alert("이름을 작성해주세요.");
+                } else if (o_amount == "") {
+                    alert("수량을 선택해주세요.");
+                } else if (o_address == "") {
+                    alert("주소를 작성해주세요.");
+                } else if (o_phone == "") {
+                    alert("전화번호를 작성해주세요.");
+                } else {
+                    alert("주문이 완료되었습니다!");
+                    tempHtml = `<tr> <td>${o_name}</td> <td>${o_amount}</td> <td>${o_address}</td> <td>${o_phone}</td> </tr>`;
+                    $('#orders-box').append(tempHtml);
+                }
+            }
+
+
+            $(document).ready(function () {
+                alert('다 로딩됐다!')
+                $.ajax({
+                    type: "GET",
+                    url: "https://api.manana.kr/exchange/rate.json",
+                    data: {},
+                    success: function (response) {
+                        let USKRW = response[1]["rate"];
+                        let moneyrate = '<p>' + '달러-원 환율:' + USKRW + '</p>';
+                        $('#exchangerate').append(moneyrate);
+                    }
+                })
+            });
+        </script>
+
+    </head>
+
+
+    <body>
+        <div class="wrap">
+            <div class="img"></div>
+            <div class="title">
+                <h2>상품제목 </h2>
+                <h6>가격: 1,000,000원 / 개 </h6>
+                <p class="explanation"> 이 상품으로 말할 것 같으면 용왕이 찾지 못한 토끼의 간을 찾아 빨간망토의 늑대와 아기 돼지 삼형제의 숨결이 고루 녹아 있는 먹으면 120세까지
+                    살 수 있다는
+                    이 상품으로 말할 것 같으면 용왕이
+                    찾지 못한 토끼의 간을 찾아 빨간망토의 늑대와 아기 돼지...</p>
+            </div>
+
+            <div id="exchangerate" class="info-temp">
+                <p></p>
+            </div>
+
+            <div class="ordersection">
+                <p>
+                <h2>주문하기</h2></p>
+                <form>
+                    <div class="customername">
+                        <div class="form-group">
+                            <label for="order-name">주문자 성함:</label>
+                            <input type="text" class="form-control" id="order-name">
+                        </div>
+                    </div>
+                    <div class="amount">
+                        <label for="order-amount">수량:</label>
+                        <select class="form-control" id="order-amount">
+                            <option selected value="">수량 선택</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <br/>
+                    <div class="address">
+                        <div class="form-group">
+                            <label for="order-address">주소:</label>
+                            <input type="text" class="form-control" id="order-address">
+                        </div>
+                    </div>
+                    <div class="phonenumber">
+                        <div class="form-group">
+                            <label for="order-phone">전화번호:</label>
+                            <input type="text" class="form-control" id="order-phone"
+                                   placeholder="000-0000-0000">
+                        </div>
+                    </div>
+
+                </form>
+
+                <div class="orderbutton">
+                    <button onclick="order()" type="button" class="btn btn-primary">주문하기</button>
+                </div>
+                <br/>
+
+                <div class="orders">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th scope="col">이름</th>
+                            <th scope="col">수량</th>
+                            <th scope="col">주소</th>
+                            <th scope="col">전화번호</th>
+                        </tr>
+                        </thead>
+                        <tbody id="orders-box">
+                        <tr>
+                            <td>박르탄</td>
+                            <td>10000</td>
+                            <td>르탄시 코딩구 열심동</td>
+                            <td>010-1234-5678</td>
+                        </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </body>
+
+</html>
