@@ -1,0 +1,140 @@
+& {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: stretch;
+  justify-content: center;
+  padding: 1px;
+}
+
+div.image, span.title, span.factoid {
+  flex-grow: 1;
+  background: transparent center no-repeat;
+  background-size: cover;
+  width: 20vw;
+  margin: 1px;
+  border-radius: 2px;
+  max-height: 30vmin;
+
+  &::before {
+    content: '';
+    display: block;
+    margin-top: 75%;
+  }
+}
+
+span.factoid {
+  width: 45vw;
+  order: -1;
+  position: relative;
+  background: transparent top right no-repeat;
+  background-size: 30%;
+
+  .content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 20%;
+    bottom: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  &.didyouknow {
+    background-image: url(img/factoid/didyouknow.svg);
+    .content {
+      right: 30%;
+    }
+  }
+  &.status {
+    background-image: url(img/factoid/status.svg);
+  }
+  &.update {
+    background-image: url(img/factoid/update.svg);
+  }
+
+  p {
+    margin: 12px 18px;
+    font-size: 31px;
+    line-height: 35px;
+    color: white;
+    hyphens: auto;
+    user-select: auto;
+
+    &.long {
+      font-size: 25px;
+      line-height: 27px;
+    }
+
+    @media (max-width: (600px - 1px)) {
+      margin: 8px 12px;
+      font-size: 21px;
+      line-height: 25px;
+
+      &.long {
+        font-size: 13px;
+        line-height: 15px;
+      }
+    }
+  }
+}
+
+div.image:first-of-type {
+  order: -10;
+}
+
+// explicitly use a span, so it is of a different type than images.
+span.title {
+  z-index: 10;
+  order: -2;
+  position: relative;
+  pointer-events: none;
+
+  svg {
+    position: absolute;
+    left: -38px;
+    width: calc(100% + 38px + 38px);
+    height: 800px;
+    top: 50%;
+    transform: translateY(-50%);
+    fill: #81e4bf;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+    opacity: 0.95;
+  }
+
+  h1 {
+    position: absolute;
+    top: 0;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    line-height: 41px;
+    font-size: 41px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: (768px - 1px)) {
+  div.image, span.title {
+    width: 30vw;
+    max-height: 40vh;
+  }
+  span.factoid {
+    width: 90vw;
+  }
+}
+
+@media (max-width: (600px - 1px)) {
+  span.factoid {
+    order: -15;
+  }
+  div.image:first-of-type {
+    width: 80vw;
+  }
+  div.image, span.title {
+    width: 40vw;
+  }
+}

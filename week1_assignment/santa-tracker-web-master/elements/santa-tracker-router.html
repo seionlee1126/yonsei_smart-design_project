@@ -1,0 +1,96 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../components/polymer/polymer.html">
+
+<!--
+Router for Santa Tracker.
+
+Note that index.html is somewhat special-cased: this router won't see it, and it will be reported
+as the undefined route. However, it can still be explicitly set (but so can any route). The router
+doesn't attempt to 'fix' a route value which is bad (but it won't set a bad/invalid HTML pathname
+either).
+-->
+<dom-module id="santa-tracker-router">
+<script>
+(function() {
+
+  /**
+   * Gets the current route based on the pathname.
+   *
+   * @return {string|undefined} current route, or undefined for unknown
+   */
+  function currentRoute() {
+    var m = /\/(\w+)\.html$/.exec(window.location.pathname);
+    if (m && m[1] !== 'index') {
+      return m[1];
+    }
+    return undefined;
+  }
+
+  Polymer({
+    is: 'santa-tracker-router',
+
+    hostAttributes: {hidden: true},
+
+    properties: {
+
+      /**
+       * URL route. Can be changed by users of this element, and will cause
+       * the current state to be replaced. Use `.go` to emulate a user action.
+       */
+      route: {
+        type: String,
+        observer: '_routeChanged',
+        value: function() { return currentRoute(); },
+        notify: true,
+      },
+
+    },
+
+    ready: function() {
+      window.addEventListener('popstate', function() {
+        this.route = currentRoute();
+      }.bind(this));
+    },
+
+    detached: function() {
+      throw new Error('santa-tracker-router should never be detached')
+    },
+
+    _routeChanged: function(newValue, oldValue) {
+      var newUrl = this._makeUrl(newValue);
+      if (newUrl === this._makeUrl(currentRoute())) {
+        // if the URLs are effectively equal, this should do nothing
+      } else if (oldValue === undefined) {
+        // this is setting an initial route
+        history.replaceState(null, '', newUrl);
+      } else {
+        // this is a normal nav
+        history.pushState(null, '', newUrl);
+      }
+    },
+
+    _makeUrl: function(route) {
+      var path = './';
+      if (route && route !== 'index') {
+        path = route.replace(/[^\w]/, '') + '.html';
+      }
+      return new URL(path, window.location).toString();
+    },
+
+  });
+}());
+</script>
+</dom-module>

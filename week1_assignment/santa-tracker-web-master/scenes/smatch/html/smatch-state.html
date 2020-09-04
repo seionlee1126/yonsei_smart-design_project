@@ -1,0 +1,141 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="match3-board.html">
+
+<dom-module id="smatch-state">
+  <script>
+    (function() {
+      const Graphic = Match3BoardElement.Graphic;
+
+      const SHARE_STATUS = 'share';
+      const STARTED_STATUS = 'started';
+      const FINISHED_STATUS = 'finished';
+
+      const SmatchStateElement = Polymer({
+        is: 'smatch-state',
+
+        properties: {
+
+          decorations: {
+            type: Array,
+            notify: true,
+            value: function() {
+              return [];
+            }
+          },
+
+          teamIds: {
+            type: Array,
+            notify: true
+          },
+
+          level: {
+            type: Number,
+            notify: true,
+            computed: '_computeLevel(decorations.length)',
+            observer: '_levelChanged'
+          },
+
+          status: {
+            type: String,
+            notify: true,
+            value: STARTED_STATUS, // finished, share
+            readOnly: true
+          }
+        },
+
+        ready: function() {
+          const state = this.deserialize();
+
+          if (state.decorations.length && state.teamIds.length) {
+            this.decorations = state.decorations;
+            this.teamIds = state.teamIds;
+            this._setStatus(SHARE_STATUS);
+          }
+        },
+
+        deserialize: function() {
+          const decorationsParameter = window.getUrlParameter('d');
+          const teamParameter = window.getUrlParameter('t');
+
+          const decorations = decorationsParameter
+              ? atob(decorationsParameter).split(';')
+                  .map(function(decorationString) {
+                    return this._deserializeDecoration(decorationString);
+                  }, this)
+              : [];
+
+          const teamIds = teamParameter
+              ? atob(teamParameter).split(',')
+              : [];
+
+          return {
+            decorations: decorations,
+            teamIds: teamIds
+          };
+        },
+
+        serialize: function() {
+          const decorationParam = 'd=' +
+              btoa(this.decorations.map(function(decoration) {
+                return this._serializeDecoration(decoration)
+              }, this).join(';'));
+          const teamParam = 't=' + btoa(this.teamIds.join(','));
+
+          return [decorationParam, teamParam].join('&');
+        },
+
+        _deserializeDecoration: function(decorationString) {
+          const parts = decorationString.split(',');
+
+          return {
+            x: parseFloat(parts[0]),
+            y: parseFloat(parts[1]),
+            graphic: new Graphic('image',
+                this.resolveUrl('../img/ornaments/' + parts[2] + '.svg'))
+          };
+        },
+
+        _serializeDecoration: function(decoration) {
+          return [
+            decoration.x.toFixed(2).replace('0.', '.'),
+            decoration.y.toFixed(2).replace('0.', '.'),
+            decoration.graphic.asset.match(/([a-z0-9]+)\.svg/)[1]
+          ].join(',')
+        },
+
+        _computeLevel: function() {
+          return this.decorations
+              ? 0|this.decorations.length / 10
+              : 0;
+        },
+
+        _levelChanged: function(level) {
+          if (level === 3) {
+            this._setStatus(FINISHED_STATUS);
+          }
+        }
+      });
+
+      SmatchStateElement.SHARE_STATUS = SHARE_STATUS;
+      SmatchStateElement.STARTED_STATUS = STARTED_STATUS;
+      SmatchStateElement.FINISHED_STATUS = FINISHED_STATUS;
+
+      window.SmatchStateElement = SmatchStateElement;
+    })();
+  </script>
+</dom-module>

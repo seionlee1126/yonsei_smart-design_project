@@ -1,0 +1,98 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../scene-behavior.html">
+
+<script src="codelab-scene.min.js"></script>
+<link rel="import" href="../../js/webanimations.html">
+
+<!-- TODO(samthor): Upgrade styling for Polymer 1+ (#1165) -->
+<link rel="stylesheet" href="codelab-scene.css" />
+
+<!--
+Codelab scene.
+-->
+<dom-module id="codelab-scene">
+<template>
+  <style>
+    :host([mode="portal"]) .footer-promo {
+      display: none !important;
+    }
+    :host([mode="portal"]) .force-rotate.portrait {
+      display: none !important;
+    }
+    :host([mode="portal"]) .force-rotate.landscape {
+      display: none !important;
+    }
+  </style>
+  <div id="module-codelab">
+    <iframe src="about:blank" scrolling="no" width="100%" height="100%" frameBorder="0" data-computer-love></iframe>
+    <div class="gui">
+      <div class="force-rotate portrait">
+        <div class="force-rotate-graphic"></div>
+        <div class="force-rotate-explanation">
+          <i18n-msg msgid="tilt">PLACEHOLDER_i18n</i18n-msg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+<script>
+(function() {
+  Polymer({
+    is: 'codelab-scene',
+    behaviors: [window.SantaSceneBehavior],
+
+    frame: null,
+
+    onPreload: function() {
+      this.preloadSounds('computer_load_sounds', 40);
+      this.preloadImages([
+        'img/logo.svg',
+        '../codelabframe/img/block-east.svg',
+        '../codelabframe/img/block-north.svg',
+        '../codelabframe/img/block-repeat.svg',
+        '../codelabframe/img/block-south.svg',
+        '../codelabframe/img/block-west.svg',
+        '../codelabframe/img/jigsaw.png',
+        '../codelabframe/img/puzzle-1.png',
+        '../codelabframe/img/puzzle-2.png',
+        '../codelabframe/img/tutorial/maze.gif',
+        '../codelabframe/img/tutorial/puzzle.gif',
+        '../codelabframe/img/tutorial/shadow.svg'
+      ]);
+    },
+    onShow: function() {
+      var module = this.$['module-codelab'];
+      this.fire('sound-ambient', 'music_start_scene');
+      this.frame = new scenes.codelab.FrameWrapper(module, this.resolveUrl('.'));
+    },
+    onHide: function() {
+      this.frame.dispose();
+      this.frame = null;
+      this.fire('sound-ambient', 'computer_end');
+    },
+    start: function() {
+      this.frame.setLevel(1);
+      this.frame.restart();
+    },
+    playExtra: function() {
+      this.frame.playExtra();
+    }
+  });
+
+})();
+</script>
+</dom-module>

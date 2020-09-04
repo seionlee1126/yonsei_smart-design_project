@@ -1,0 +1,301 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="smatch-common.html">
+
+<dom-module id="smatch-unlockable">
+  <template>
+    <style>
+      @keyframes bounce {
+        0% {
+          transform: translateY(0);
+        }
+
+        50% {
+          transform: translateY(0);
+        }
+
+        51% {
+          transform: translateY(-1%);
+        }
+
+        52% {
+          transform: translateY(0%);
+        }
+
+        53% {
+          transform: translateY(0%);
+        }
+
+        54% {
+          transform: translateY(-1%);
+        }
+
+        55% {
+          transform: translateY(0%);
+        }
+
+        100% {
+          transform: translateY(0%);
+        }
+      }
+
+      :host {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        width: 500px;
+        height: 500px;
+        pointer-events: none;
+      }
+
+      :host(:not(.active)) #hit {
+        pointer-events: none;
+      }
+
+      :host(.mini) {
+        width: 90px;
+        height: 90px;
+      }
+
+      :host(.mini) #hit {
+        margin-bottom: 0;
+        align-items: flex-start;
+      }
+
+      :host(.mini.selected) #character:after,
+      :host(.mini:not(.unlocked)) #character:after {
+        content: '';
+        position: absolute;
+        display: block;
+        width: 72px;
+        height: 72px;
+        border-radius: 72px;
+        top: 9px;
+        left: 9px;
+      }
+
+      :host(.mini:not(.unlocked)) #character:after {
+        font-family: Lobster;
+        content: '?';
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #444;
+        font-weight: bold;
+        font-size: 3em;
+        background-color: #111;
+      }
+
+      :host(.mini.selected) #character:after {
+        background-color: rgba(255, 180, 0, 0.75);
+      }
+
+      :host(:not(.mini).unlocked) #character {
+        animation-name: bounce;
+      }
+
+      :host(.selected) #hit:after {
+        content: url('../img/checkmark.svg');
+        display: block;
+        width: 32px;
+        height: 32px;
+      }
+
+      :host(.mini.selected) #hit:after {
+        width: 48px;
+        height: 48px;
+        margin-top: -8px;
+      }
+
+      #character {
+        @apply --layout-fit;
+        animation-duration: 10s;
+        animation-iteration-count: infinite;
+        background-repeat: no-repeat;
+        background-size: 100%;
+      }
+
+      #hit {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        pointer-events: auto;
+        cursor: pointer;
+        margin-bottom: 90px;
+        z-index: 1;
+      }
+    </style>
+    <div id="character"></div>
+    <div id="hit" on-tap="_onHitTap"></div>
+  </template>
+  <script>
+    (function() {
+      const CHARACTER_SOUNDS = window.scenes.smatch.CHARACTER_SOUNDS;
+
+      const HIT_AREAS = {
+        elf1: {
+          width: 80,
+          height: 140
+        },
+
+        elf2: {
+          width: 75,
+          height: 140
+        },
+
+        gingerbreadman: {
+          width: 140,
+          height: 190
+        },
+
+        mrsclaus: {
+          width: 110,
+          height: 200
+        },
+
+        snowman: {
+          width: 160,
+          height: 270
+        },
+
+        santa: {
+          width: 130,
+          height: 220
+        },
+
+        bear: {
+          width: 130,
+          height: 220
+        },
+
+        trex: {
+          width: 300,
+          height: 300
+        },
+
+        penguin: {
+          width: 80,
+          height: 90
+        },
+
+        rudolph: {
+          width: 70,
+          height: 220
+        }
+      };
+
+      Polymer({
+        is: 'smatch-unlockable',
+
+        properties: {
+          active: {
+            type: Boolean,
+            value: false
+          },
+
+          hitArea: {
+            type: Object,
+            computed: '_computeHitArea(characterId)'
+          },
+
+          unlocked: {
+            type: Boolean,
+            value: false
+          },
+
+          selected: {
+            type: Boolean,
+            value: false
+          },
+
+          characterId: {
+            type: String
+          },
+
+          mini: {
+            type: Boolean,
+            value: false
+          }
+        },
+
+        observers: [
+          '_updateAppearance(characterId, unlocked, selected, mini, hitArea)',
+          '_reflectToClass(selected, "selected")',
+          '_reflectToClass(mini, "mini")',
+          '_reflectToClass(unlocked, "unlocked")',
+          '_reflectToClass(active, "active")'
+        ],
+
+        _reflectToClass: function(value, className) {
+          if (value) {
+            Polymer.dom(this).classList.add(className);
+          } else {
+            Polymer.dom(this).classList.remove(className);
+          }
+        },
+
+        _updateAppearance: function(characterId, unlocked, selected, mini, hitArea) {
+          this.debounce('_updateAppearance', function() {
+            let hitWidth = '';
+            let hitHeight = '';
+            let animationName = '';
+            let backgroundUrl = '';
+
+            if (mini) {
+              backgroundUrl =
+                  this.resolveUrl('../img/portraits/' + characterId + '.svg');
+            } else {
+              backgroundUrl = this.resolveUrl('../img/selection-screen') +
+                  (unlocked
+                      ? (selected
+                          ? '/selected'
+                          : '')
+                      : '/unavailable') +
+                  '/' + characterId + '.svg';
+
+              hitWidth = hitArea.width + 'px';
+              hitHeight = hitArea.height + 'px';
+            }
+
+            this.$.character.style.animationDelay = Math.random() * -10 + 's';
+            this.$.character.style.backgroundImage = 'url(' + backgroundUrl + ')';
+
+            this.$.hit.style.width = hitWidth;
+            this.$.hit.style.height = hitHeight;
+          }.bind(this));
+        },
+
+        _onHitTap: function() {
+          if (this.unlocked) {
+            const sound = CHARACTER_SOUNDS[this.characterId];
+            this.fire('unlockable-selected', { id: this.characterId });
+            if (this.selected && sound) {
+              window.santaApp.fire('sound-trigger', sound);
+            }
+          }
+        },
+
+        _computeHitArea: function(characterId) {
+          return HIT_AREAS[characterId];
+        }
+      })
+    })();
+  </script>
+</dom-module>

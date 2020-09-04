@@ -1,0 +1,82 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="smatch-common.html">
+<link rel="import" href="match3-board.html">
+<link rel="import" href="match3-gem.html">
+
+<dom-module id="smatch-decoration">
+  <template>
+    <style>
+      :host {
+        @apply --layout-fit;
+        overflow: visible;
+        transform-origin: center center;
+      }
+
+      match3-gem {
+        position: relative;
+        transform-origin: center;
+      }
+    </style>
+    <match3-gem
+        id="gem"
+        graphic="[[graphic]]">
+    </match3-gem>
+  </template>
+  <script>
+    (function() {
+      const DEFAULT_GEM_SIZE = scenes.smatch.DEFAULT_GEM_SIZE;
+
+      Polymer({
+        is: 'smatch-decoration',
+
+        properties: {
+          gemSize: {
+            type: Number,
+            value: DEFAULT_GEM_SIZE
+          },
+
+          x: {
+            type: Number
+          },
+
+          y: {
+            type: Number
+          },
+
+          scale: {
+            type: Number
+          },
+
+          graphic: {
+            type: Match3BoardElement.Graphic
+          }
+        },
+
+        observers: ['_updatePosition(x, y, scale)'],
+
+        _updatePosition: function(x, y, scale) {
+          this.debounce('update-position', function() {
+            this.$.gem.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+            this.style.transform = 'translate(' + (x * 100) + '%, ' + (y * 100) + '%)';
+          });
+        }
+      });
+    })();
+
+  </script>
+</dom-module>

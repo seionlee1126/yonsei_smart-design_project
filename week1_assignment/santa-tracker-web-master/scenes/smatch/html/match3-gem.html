@@ -1,0 +1,96 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+
+<dom-module id="match3-gem">
+  <template>
+    <style>
+      :host {
+        display: flex;
+        width: 74px;
+        height: 74px;
+        box-sizing: border-box;
+        transition: transform 0.3s;
+        transform-origin: 0 0;
+        background-size: 100%;
+        background-repeat: no-repeat;
+        background-position: center center;
+      }
+
+      :host(.no-model) {
+        display: none;
+      }
+    </style>
+  </template>
+  <script>
+    (function() {
+      const DEFAULT_SIZE = 74;
+
+      window.Match3GemElement = Polymer({
+        is: 'match3-gem',
+
+        properties: {
+          graphic: {
+            type: Object,
+            value: null,
+            observer: 'updateDisplay_'
+          },
+
+          size: {
+            type: Number,
+            value: DEFAULT_SIZE,
+            observer: 'updateDisplay_'
+          }
+        },
+
+        reset: function() {
+          this.graphic = null;
+          this.size = DEFAULT_SIZE;
+          this.style.transform = '';
+        },
+
+        updateDisplay_: function() {
+          this.debounce('updateDisplay_', function() {
+            this.style.backgroundColor = '';
+            this.style.backgroundImage = '';
+
+            if (this.graphic != null) {
+              this.classList.remove('no-model');
+
+              switch (this.graphic.type) {
+                case 'color':
+                  this.style.backgroundColor = this.graphic.asset;
+                  break;
+                case 'image':
+                  this.style.backgroundImage = 'url(' + this.graphic.asset + ')';
+                  break;
+              }
+            } else {
+              this.classList.add('no-model');
+            }
+
+            if (this.size != null) {
+              this.style.width = this.size + 'px';
+              this.style.height = this.size + 'px';
+            }
+          });
+        }
+      });
+
+      window.Match3GemElement.DEFAULT_SIZE = DEFAULT_SIZE;
+    })();
+
+  </script>
+</dom-module>

@@ -1,0 +1,119 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="match3-board.html">
+<link rel="import" href="match3-gem.html">
+<link rel="import" href="smatch-common.html">
+
+<dom-module id="smatch-portrait">
+  <template>
+    <style>
+      :host {
+        display: block;
+        position: relative;
+        box-sizing: border-box;
+
+        padding: 10px;
+      }
+
+      img {
+        position: absolute;
+        z-index: 1;
+        width: 72px;
+        height: 72px;
+      }
+
+      circle {
+        fill: transparent;
+      }
+
+      #base {
+        fill: #444;
+      }
+
+      #progress {
+        transform-origin: center center;
+        transform:  rotate(-90deg);
+        stroke-dasharray: 360;
+        stroke-dashoffset: 360;
+        stroke-linecap: butt;
+        fill: transparent;
+        stroke-width: 12px;
+        transition: stroke-dashoffset 0.3s;
+        stroke: #FED200;
+      }
+    </style>
+    <img src="[[teamMember.portrait]]">
+    <svg id="svg"
+        width="72"
+        height="72"
+        viewPort="0 0 100 100"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg">
+      <circle
+          id="base"
+          r="36"
+          cx="36"
+          cy="36">
+      </circle>
+
+      <circle
+          id="progress"
+          r="30"
+          cx="36"
+          cy="36">
+      </circle>
+
+    </svg>
+  </template>
+  <script>
+    (function() {
+      const SmatchTeamMember = scenes.smatch.SmatchTeamMember;
+      const awaitTransition = scenes.smatch.awaitTransition;
+      const GEMS_NEEDED_TO_DECORATE = scenes.smatch.GEMS_NEEDED_TO_DECORATE;
+
+      Polymer({
+        is: 'smatch-portrait',
+
+        properties: {
+          teamMember: {
+            type: SmatchTeamMember,
+            notify: true
+          },
+
+          gemGraphic: {
+            type: Match3BoardElement.Graphic
+          }
+        },
+
+        observers: [
+          '_updateGemScale(teamMember.gemCount)'
+        ],
+
+        _updateGemScale: function(gemCount) {
+          if (gemCount >= GEMS_NEEDED_TO_DECORATE) {
+            this.fire('flush-gems', { gemCount: gemCount });
+            this.set('teamMember.gemCount', gemCount - GEMS_NEEDED_TO_DECORATE);
+            return;
+          }
+
+          this.$.progress.style.strokeDashoffset = 360 - (gemCount / GEMS_NEEDED_TO_DECORATE) * 180;
+        }
+      });
+    })();
+
+  </script>
+</dom-module>

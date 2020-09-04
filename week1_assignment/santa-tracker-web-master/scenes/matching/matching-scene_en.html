@@ -1,0 +1,292 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../scene-behavior.html">
+
+<script src="matching-scene.min.js"></script>
+
+<!-- TODO(samthor): Upgrade styling for Polymer 1+ (#1165) -->
+<link rel="stylesheet" href="matching-scene.css" />
+
+<!--
+Matching scene.
+-->
+<dom-module id="matching-scene">
+<template>
+  <div id="module-matching">
+    <div class="scene">
+      <div class="sky">
+        <div class="cloud cloud1">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud2">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud3">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud4">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud5">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud6">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud7">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud8">
+          <div class="cloud__img"></div>
+        </div>
+        <div class="cloud cloud9">
+          <div class="cloud__img"></div>
+        </div>
+      </div>
+      <div class="anchor">
+        <div class="background">
+          <div class="trees trees--left"></div>
+          <div class="trees trees--right"></div>
+          <div class="doors">
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door door--enabled">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door door--enabled">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door door--enabled">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door door--enabled">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+            <div class="door">
+              <div class="door__handle door__handle--left door__handle--enabled--left door__handle--enabled"></div>
+              <div class="door__handle door__handle--right door__handle--enabled--right door__handle--enabled"></div>
+              <div class="door__handle door__handle--left door__handle--disabled--left door__handle--disabled"></div>
+              <div class="door__handle door__handle--right door__handle--disabled--right door__handle--disabled"></div>
+              <div class="card"></div>
+              <div class="door__bar door__bar--top"></div>
+              <div class="door__bar door__bar--bottom"></div>
+              <div class="door__nail door__nail--top-left"></div>
+              <div class="door__nail door__nail--top-right"></div>
+              <div class="door__nail door__nail--bottom-left"></div>
+              <div class="door__nail door__nail--bottom-right"></div>
+            </div>
+          </div>
+          <div class="house"></div>
+          <div class="doors-target">
+            <div data-target="0" class="door-target"></div>
+            <div data-target="1" class="door-target"></div>
+            <div data-target="2" class="door-target"></div>
+            <div data-target="3" class="door-target"></div>
+            <div data-target="4" class="door-target"></div>
+            <div data-target="5" class="door-target"></div>
+            <div data-target="6" class="door-target"></div>
+            <div data-target="7" class="door-target"></div>
+            <div data-target="8" class="door-target"></div>
+            <div data-target="9" class="door-target"></div>
+            <div data-target="10" class="door-target"></div>
+            <div data-target="11" class="door-target"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="gui">
+      <div class="tutorial">
+        <div class="shadow"></div>
+        <div class="explanation"></div>
+      </div>
+      <div class="levelup"></div>
+      <div class="levelup--number"></div>
+      <div class="force-rotate landscape">
+        <div class="force-rotate-graphic"></div>
+        <div class="force-rotate-explanation"><i18n-msg msgid="tilt">PLACEHOLDER_i18n</i18n-msg></div>
+      </div>
+    </div>
+  </div>
+
+</template>
+<script>
+(function() {
+  Polymer({
+    is: 'matching-scene',
+    behaviors: [
+      window.SantaSceneBehavior,
+      window.SantaSceneGameButtonsBehavior,
+    ],
+
+    animationHelper: null,
+
+    onPreload: function() {
+      this.preloadSounds('m_load_sounds', 20);
+      this.preloadImages([
+        'img/logo.svg',
+        'img/house.svg',
+        'img/cloud.min.svg',
+        'img/mountains.svg',
+        'img/sprite-doors.svg',
+        'img/trees-left.png',
+        'img/trees-right.png',
+        'img/rotate.svg'
+      ]);
+    },
+
+    onShow: function() {
+      var module = this.$['module-matching'];
+      this.game = new scenes.matching.Game(module);
+    },
+
+    onHide: function() {
+      this.game.destroy();
+      this.game = null;
+      this.fire('sound-ambient', 'm_end_game');
+    },
+  });
+
+})();
+</script>
+</dom-module>

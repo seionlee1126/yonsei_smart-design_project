@@ -1,0 +1,576 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../../../elements/santa-maps-api.html">
+<link rel="import" href="tracker-map_module.html">
+
+<script src="../../shared/js/mapstyles.js"></script>
+
+<!--
+Tracker map.
+-->
+<dom-module id="tracker-map">
+<template>
+  <style include="tracker-map_module"></style>
+
+  <santa-maps-api on-api-load="_mapsAPIReady"></santa-maps-api>
+
+  <iron-media-query query="(pointer: fine)" query-matches="{{_hasPointer}}"></iron-media-query>
+
+  <img src="../img/marker.png" id="marker" hidden />
+  <img src="../img/northpole.png" id="northpoleMarker" hidden />
+
+  <div id="santa" tabindex="0" hidden>
+    <div class="presents" hidden>
+      <div class="deliver0"></div>
+      <div class="deliver1"></div>
+      <div class="deliver2"></div>
+    </div>
+    <div class="sleigh" data-dir="se">
+      <div class="back"></div>
+      <div class="santa"></div>
+      <div class="front"></div>
+    </div>
+  </div>
+
+  <div id="legalnotices"></div>
+  <div id="map"></div>
+
+</template>
+<script>
+(function() {
+  var POLYLINE_COLOR = '#22a528';
+  var POLYLINE_WEIGHT = 2;
+  var DIR_NAMES = 'n ne e se s sw w nw'.split(' ');
+  var FOCUS_TIMEOUT = 30 * 1000;  // after this much inactivity, refocus
+
+  function dirForHeading(heading) {
+    if (isNaN(heading)) {
+      return '';
+    }
+    var offset = 360 / (DIR_NAMES.length * 2);  // 27.5 deg
+    var normalized = (((heading + offset) % 360) + 360) % 360;
+    var index = Math.floor(normalized / 360 * DIR_NAMES.length);
+    return DIR_NAMES[index];
+  }
+
+  function createSantaLayer(santaDiv, marker, northpoleMarker) {
+    function SantaLayer(options, clickHandler, routeClickHandler) {
+      // TODO(samthor): Use real template.
+      this._container = santaDiv.cloneNode(true);
+      this._container.addEventListener('click', function(event) {
+        event.stopPropagation();  // prevents marker clicks when Santa was intended
+        clickHandler();
+      });
+      this.setValues(options);
+
+      this._sleigh = this._container.querySelector('.sleigh');
+      this._presents = this._container.querySelector('.presents');
+
+      this._routeClickHandler = routeClickHandler;
+      this._markerPool = [];
+      this._markers = [];
+      this._lines = [];
+      this._trailEndLatLng = null;
+
+      this._activeTrail = new google.maps.Polyline({
+        geodesic: true,
+        strokeColor: POLYLINE_COLOR,
+        strokeWeight: POLYLINE_WEIGHT,
+      });
+      this._activeTrail.bindTo('map', this);
+
+      this._locationIcon = /** @type {google.maps.Icon} */({
+        url: marker.src,
+        size: new google.maps.Size(15, 18),
+        scaledSize: new google.maps.Size(15, 18),
+      });
+
+      this._northpoleIcon = /** @type {google.maps.Icon} */({
+        url: northpoleMarker.src,
+        size: new google.maps.Size(132, 100),
+        scaledSize: new google.maps.Size(132, 100),
+        anchor: new google.maps.Point(66, 50),
+      });
+
+    }
+    SantaLayer.prototype = new google.maps.OverlayView;
+
+    /**
+     * Maps API OverlayView lifecycle method, called when content panes are ready.
+     */
+    SantaLayer.prototype.onAdd = function() {
+      var panes = this.getPanes();
+      panes.floatPane.appendChild(this._container);
+    };
+
+    /**
+     * Maps API OverlayView lifecycle method, called when content must be torn down.
+     */
+    SantaLayer.prototype.onRemove = function() {
+      // NOTE: never called since SantaLayer's map is never nulled.
+      this._container.parentNode.removeChild(this._container);
+    };
+
+    /**
+     * Set the position and force a redraw.
+     * @param {!google.maps.LatLng} latLng
+     * @param {number} heading in range [0,360)
+     */
+    SantaLayer.prototype.setPosition = function(latLng, heading) {
+      this.set('position', latLng);
+
+      var presents = (heading == null);  // null or undefined are fine
+      this._sleigh.hidden = presents;
+
+      if (this._presents.hidden !== !presents) {
+        this._presents.hidden = !presents;
+        var previous = this._presents.querySelector('.active');
+        previous && previous.classList.remove('active');
+        var choice = randomChoice(this._presents.children);
+        choice && choice.classList.add('active');
+      }
+
+      if (!presents) {
+        var dir = dirForHeading(heading);
+        dir && this._sleigh.setAttribute('data-dir', dir);
+        this._sleigh.hidden = !dir;
+      }
+
+      this.draw();
+      this._updateActiveTrail();
+    };
+
+    /**
+     * Sets the current trail of LatLng points. Draws opaque => transparent lines along the length.
+     */
+    SantaLayer.prototype.setLatLngTrail = function(trail) {
+      if (trail.length !== this._lines.length + 1) {
+        var map = this.getMap();
+        this._lines.forEach(function(line) {
+          line.setMap(null);
+        });
+        this._lines = [];
+        for (var i = 1; i < trail.length; ++i) {
+          var frac = (1 / trail.length) * i;
+          var line = new google.maps.Polyline({
+            geodesic: true,
+            strokeColor: POLYLINE_COLOR,
+            strokeWeight: POLYLINE_WEIGHT,
+            strokeOpacity: 1 - (frac * frac),
+            map: map,
+          });
+          this._lines.push(line);
+        }
+      }
+
+      this._lines.forEach(function(line, i) {
+        line.setPath(trail.slice(i, i + 2));
+      });
+      this._trailEndLatLng = trail[0] || null;
+      this._updateActiveTrail();
+    };
+
+    /**
+     * Builds or reuses a marker for the tracker.
+     */
+    SantaLayer.prototype._fetchMarker = function(position, data) {
+      var next = this._markerPool.pop();
+      if (next) {
+        next.setPosition(position);
+        next.setMap(this.getMap());
+      } else {
+        next = new google.maps.Marker({
+          position: position,
+          map: this.getMap(),
+        });
+        next.addListener('click', this._onRouteMarkerClick.bind(this, next));
+      }
+
+      // TODO(samthor): This is a bit ugly just for one location.
+      var northpole = (data && data.id === 'takeoff');
+      next.setIcon(northpole ? this._northpoleIcon : this._locationIcon);
+
+      next.set('st_dest', data);
+      return next;
+    };
+
+    /**
+     * Releases a marker to the pool of unused markers.
+     */
+    SantaLayer.prototype._releaseMarker = function(marker) {
+      if (marker) {
+        marker.setMap(null);
+        marker.set('st_dest', null);
+        this._markerPool.push(marker);
+      }
+    };
+
+    SantaLayer.prototype._onRouteMarkerClick = function(marker) {
+      var dest = marker.get('st_dest');
+      dest && this._routeClickHandler(dest);
+    };
+
+    /**
+     * Specifiy the list of previous destinations, and an optional tail limit to show.
+     */
+    SantaLayer.prototype.setPreviousDestinations = function(destinations, limit) {
+      // Clear head markers if the route gets smaller (offset change).
+      while (this._markers.length > destinations.length) {
+        this._releaseMarker(this._markers.pop());
+      }
+
+      // Add new markers when the route gets larger (normal operation).
+      var map = this.getMap();
+      while (destinations.length > this._markers.length) {
+        // If there's a limit, don't actually make markers after the limit.
+        if (limit > 0 && this._markers.length < destinations.length - limit) {
+          this._markers.push(null);
+          continue;
+        }
+        var dest = destinations[this._markers.length];
+        this._markers.push(this._fetchMarker(dest.location, dest));
+      }
+
+      // If a limit was specified, then hide previous markers.
+      if (limit > 0) {
+        for (var i = this._markers.length - limit; i >= 0; --i) {
+          var hide = this._markers[i];
+          if (!hide) {
+            break;  // already hidden all these markers
+          }
+          this._markers[i] = null;
+          this._releaseMarker(hide);
+        }
+      }
+    };
+
+    /**
+     * Updates the active trail (the segment from trail => Santa), based on the latLngTrail and
+     * Santa's location.
+     */
+    SantaLayer.prototype._updateActiveTrail = function() {
+      var latLng = /** @type {google.maps.LatLng} */ (this.get('position'));
+
+      if (latLng && this._trailEndLatLng) {
+        this._activeTrail.setPath([latLng, this._trailEndLatLng]);
+      } else {
+        this._activeTrail.setPath([]);
+      }
+    };
+
+    /**
+     * Maps API OverlayView lifecycle method, called when content must be repositioned.
+     */
+    SantaLayer.prototype.draw = function() {
+      var projection = this.getProjection();
+      var latLng = /** @type {google.maps.LatLng} */ (this.get('position'));
+
+      if (!latLng || !projection) {
+        this._container.hidden = true;
+      } else {
+        this._container.hidden = false;
+
+        var pos = projection.fromLatLngToDivPixel(latLng);
+        this._container.style.transform = 'translate(' + pos.x + 'px, ' + pos.y + 'px)';
+      }
+    };
+    return SantaLayer;
+  }
+
+  Polymer({
+    is: 'tracker-map',
+
+    properties: {
+      _map: Object,
+      _santaLayer: Object,
+      _duringMapChange: {
+        type: Boolean,
+        value: true,
+      },
+      _duringResize: {
+        type: Boolean,
+        value: false,
+      },
+
+      /**
+       * Whether the browser has a pointer. Used to control visibility of zoom controls, and bound
+       * from `iron-media-query`.
+       */
+      _hasPointer: {
+        type: Boolean,
+        value: false,
+        observer: '_hasPointerChanged',
+      },
+
+      /**
+       * Whether the user has set a zoom, and it shouldn't be modified.
+       */
+      _userZoom: {
+        type: Boolean,
+        value: false,
+        observer: '_userZoomChanged',
+      },
+
+      /**
+       * Whether the camera should focus on Santa. Sets to false if the user pans around.
+       */
+      focusOnSanta: {
+        type: Boolean,
+        value: true,
+        notify: true,
+        observer: '_delaySantaFocus',
+      },
+
+      /**
+       * The current google.maps.LatLng of Santa's location.
+       */
+      santaLatLng: {
+        type: Object,
+        value: null,
+      },
+
+      /**
+       * Santa's heading, in degrees. If `null`, then Santa is at a city. If this is NaN, don't
+       * show Santa at all.
+       */
+      santaHeading: {
+        type: Number,
+        value: NaN,
+      },
+
+      /**
+       * Santa's trail, all previously shown stops. The first stop is always index zero.
+       */
+      trail: {
+        type: Array,
+        value: [],
+      },
+
+      /**
+       * The length of a trail to display.
+       */
+      trailLength: {
+        type: Number,
+        value: 20,
+      },
+
+      /**
+       * Whether to display in minimal UI mode.
+       */
+      minimalUi: {
+        type: Boolean,
+        value: false,
+      },
+    },
+
+    observers: [
+      '_updateMapState(_map, focusOnSanta, santaLatLng, santaHeading)',
+      '_updateTrail(_map, trail, trailLength)',
+    ],
+
+    _calculateMapOffset: function() {
+      var out = {x: 0, y: 0};
+      if (!this.minimalUi) {
+        // TODO(samthor): This could happen outside `tracker-map`, as this element shouldn't care
+        // about cards laid on top of here.
+        if (window.innerHeight < 450) {
+          out.x = -window.innerWidth / 4;
+          out.y = -30;
+        } else {
+          out.y = -60;  // roughly 1/2 the size of cards
+        }
+      }
+      return out;
+    },
+
+    _updateMapState: function() {
+      // nb. we need a delay here, to let window resizes etc settle
+      this.debounce('_updateMapState', function() {
+        if (!this._map || !this.santaLatLng) {
+          return;
+        }
+
+        var santaLatLng = new google.maps.LatLng(this.santaLatLng);
+        this._santaLayer.setPosition(santaLatLng, this.santaHeading);
+
+        if (!this.focusOnSanta) {
+          return;  // nothing else to do
+        }
+
+        var offsetSantaLatLng;
+        var offset = this._calculateMapOffset();
+        var projection = this._map.getProjection();
+        if ((offset.x || offset.y) && projection) {
+          // TODO(samthor): This code doesn't always run while Santa is delivering presents.
+          var point = projection.fromLatLngToPoint(santaLatLng);
+          var pow = Math.pow(2, this._map.getZoom());
+          point.x -= offset.x / pow;
+          point.y -= offset.y / pow;
+          offsetSantaLatLng = projection.fromPointToLatLng(point);
+        } else {
+          offsetSantaLatLng = santaLatLng;
+        }
+
+        try {
+          this._duringMapChange = true;
+          this._map.setCenter(offsetSantaLatLng);
+
+          if (!this._userZoom) {
+            // If focused, the zoom is roughly inverse with screen size. Smaller devices see more
+            // of the Earth, because they have less context around Santa.
+            var zoom = Math.round(window.innerWidth / 240);
+            zoom = Math.max(2, Math.min(6, zoom));
+            this._map.setZoom(zoom);
+          }
+        } finally {
+          this._duringMapChange = false;
+        }
+      }, 10);
+    },
+
+    _updateTrail: function() {
+      if (!this._map) {
+        return;
+      }
+      this._santaLayer.setPreviousDestinations(this.trail, this.minimalUi ? this.trailLength : -1);
+
+      // Grab last `trailLength` entries, push Santa's location, reverse for the display.
+      var slice = this.trail.slice(-this.trailLength).map(function(data) {
+        return data.location;
+      });
+      slice.reverse();
+
+      this._santaLayer.setLatLngTrail(slice);
+    },
+
+    _onWindowResize: function() {
+      this._duringResize = true;
+      window.requestAnimationFrame(function() {
+        // at this point, the resize has settled: run _updateMapState again.
+        this._duringResize = false;
+        this._updateMapState();
+      }.bind(this));
+
+      google.maps.event.trigger(this._map, 'resize');
+    },
+
+    attached: function() {
+      this._onWindowResize = this._onWindowResize.bind(this);
+      window.addEventListener('resize', this._onWindowResize);
+    },
+
+    detatched: function() {
+      window.removeEventListener('resize', this._onWindowResize);
+    },
+
+    _onFollowSantaClick: function() {
+      window.ga('send', 'event', 'tracker', 'santa', 'click');
+      this._userZoom = false;
+      this.focusOnSanta = true;
+    },
+
+    _onRouteMarkerClick: function(dest) {
+      window.ga('send', 'event', 'tracker', 'marker', 'click');
+      // TODO(samthor): do something.
+      console.info('dest clicked', dest.id);
+    },
+
+    _userZoomChanged: function() {
+      if (!this._userZoom) {
+        // If userZoom was reset, we need to reposition the camera.
+        this._updateMapState();
+      }
+    },
+
+    _hasPointerChanged: function() {
+      if (this._map) {
+        // If the browser has a pointer (i.e., a mouse on desktop), show zoom controls.
+        this._map.setOptions({zoomControl: this._hasPointer && !this.minimalUi});
+      }
+    },
+
+    _delaySantaFocus: function() {
+      if (!this.focusOnSanta) {
+        this.debounce('_focusOnSantaChanged', function() {
+          this.focusOnSanta = true;
+        }, FOCUS_TIMEOUT);
+      } else {
+        this.cancelDebouncer('_focusOnSantaChanged');
+      }
+    },
+
+    _mapsAPIReady: function() {
+      if (this._map) {
+        throw new Error('can\'t mapsAPIReady more than once');
+      }
+
+      var map = new google.maps.Map(this.$.map, {
+        center: {lat: 0, lng: 0},
+        zoom: 1,
+        minZoom: 2,
+        maxZoom: 6,  // ROK has own tiles at 7+
+        // 'noPerTile': true,  // ???
+        disableDefaultUI: true,
+        zoomControl: this._hasPointer && !this.minimalUi,
+        zoomControlOptions: {
+          position: google.maps.ControlPosition.RIGHT_CENTER,
+        },
+        backgroundColor: '#69d5d0',  // TODO: bottom color
+        styles: mapstyles.styles,
+        scrollwheel: false,
+        hideLegalNotices: !this.minimalUi,
+      });
+
+      map.addListener('center_changed', function() {
+        // If it's not a map change or resize, reset focusOnSanta.
+        if (!this._duringMapChange && !this._duringResize) {
+          this.focusOnSanta = false;
+          this._delaySantaFocus();
+          window.ga('send', 'event', 'tracker', 'map', 'move');
+        }
+      }.bind(this));
+
+      map.addListener('zoom_changed', function() {
+        // If it's not a map change, this is a user changing the zoom level.
+        if (!this._duringMapChange) {
+          this._userZoom = true;
+          this._updateMapState();  // need to reposition Santa, due to offsets
+          window.ga('send', 'event', 'tracker', 'map', 'zoom');
+        }
+      }.bind(this));
+
+      if (!this.minimalUi) {
+        map.addListener('mapdataproviders_changed', function() {
+          var providers = /** @type {string} */ (map.get('mapDataProviders'));
+          if (providers) {
+            this.$.legalnotices.textContent = providers;
+          }
+        }.bind(this));
+      }
+
+      var SantaLayer = createSantaLayer(this.$.santa, this.$.marker, this.$.northpoleMarker);
+      this._santaLayer = new SantaLayer(
+          {map: map}, this._onFollowSantaClick.bind(this), this._onRouteMarkerClick.bind(this));
+      this._map = map;
+    }
+
+  });
+
+}());
+</script>
+</dom-module>
+  

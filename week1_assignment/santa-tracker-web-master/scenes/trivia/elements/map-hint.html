@@ -1,0 +1,139 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../elements/santa-maps-api.html">
+
+<dom-module id="map-hint">
+<template>
+  <style>
+    .fit {
+      @apply(--layout-fit);
+    }
+  </style>
+  <!-- TODO(samthor): Non-standard import, but works in Polymer 1+ -->
+  <link rel="import" type="css" href="map-hint.css" />
+  <div id="map" class="fit"></div>
+  <santa-maps-api on-api-load="mapsAPIReady"></santa-maps-api>
+  <div id="globe" class="globe fit">
+    <div class="globe-part globe-part--1"></div>
+    <div class="globe-part globe-part--2"></div>
+    <div class="globe-part globe-part--3"></div>
+    <div class="globe-part globe-part--4"></div>
+    <div class="globe-part globe-part--5"></div>
+    <div class="globe-part globe-part--6"></div>
+    <div class="globe-part globe-part--7"></div>
+    <div class="globe-part globe-part--8"></div>
+    <div class="globe-part globe-part--9"></div>
+    <div class="globe-part globe-part--10"></div>
+  </div>
+</template>
+<script>
+  Polymer({
+    is: 'map-hint',
+
+    properties: {
+      place: {
+        type: String,
+        value: null,
+        observer: 'onSearch'
+      },
+
+      santaApp: {
+        type: Object,
+        value: null
+      }
+    },
+
+    // Provide better bounds than the geocoder gives us
+    // [[S,W], [N, E]]
+    BOUNDS_OVERRIDE: {
+      'Antarctica': [[-76.978265, -28.910547], [-59.487125, 90.963891]]
+    },
+
+    apiReady: false,
+
+    found: false,
+
+    mapsAPIReady: function() {
+      this.apiReady = true;
+
+      this.map = new google.maps.Map(this.$.map, {
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        disableDefaultUI: true,
+        draggable: false,
+        disableDoubleClickZoom: true,
+        backgroundColor: '#00A6A3',
+        minZoom: 2,
+        maxZoom: 5,
+        styles: [{
+            stylers: [{visibility: 'off'}]
+          }, {
+            featureType: 'administrative.country',
+            elementType: 'geometry.stroke',
+            stylers: [{visibility: 'on'}, {weight: 1}, {color: '#00A6A3'}]
+          }, {
+            featureType: 'water',
+            elementType: 'geometry.fill',
+            stylers: [{visibility: 'on'}, {color: '#00A6A3'}]
+          }, {
+            featureType: 'landscape',
+            elementType: 'geometry.fill',
+            stylers: [{visibility: 'on'}, {color: '#008F8C'}]
+          }
+        ]
+      });
+
+      this.onSearch();
+    },
+
+    onSearch: function() {
+      console.info('wants to search for', this.place, 'api ready?', this.apiReady);
+      if (!this.apiReady || !this.place) return;
+      this.found = true;
+
+      if (this.BOUNDS_OVERRIDE[this.place]) {
+        var bounds = this.BOUNDS_OVERRIDE[this.place];
+        this.bounds = new google.maps.LatLngBounds(
+            new google.maps.LatLng(bounds[0][0], bounds[0][1]),
+            new google.maps.LatLng(bounds[1][0], bounds[1][1]));
+        return;
+      }
+
+      var geocoder = new google.maps.Geocoder();
+      geocoder.geocode({
+        'address': this.place
+      }, function(results, status) {
+        if (results.length === 0) {
+          this.found = false;
+          return;
+        }
+        this.bounds = results[0].geometry.viewport;
+      }.bind(this));
+    },
+
+    animate: function() {
+      if (!this.found) return;
+      this.$.globe.classList.remove('is-reset');
+      this.$.globe.classList.add('is-animating');
+      this.map.fitBounds(this.bounds);
+    },
+
+    reset: function() {
+      this.$.globe.classList.add('is-reset');
+      this.$.globe.classList.remove('is-animating');
+    }
+  });
+</script>
+</dom-module>

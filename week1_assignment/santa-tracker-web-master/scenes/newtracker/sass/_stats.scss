@@ -1,0 +1,93 @@
+& {
+  // At <1024, it's just top to bottom. This fixes a Safari bug where everything lays on top of each other.
+  user-select: auto;
+
+  @media (min-width: 1024px) {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    flex-flow: row nowrap;
+    justify-content: space-around;
+    align-items: stretch;
+    padding-bottom: 12px;
+  }
+}
+
+.weather-attribution {
+  width: 30px;
+  height: 30px;
+  background: url(img/twc.png) center no-repeat;
+  background-size: contain;
+  margin-top: 3px;
+  display: inline-block;
+  float: right;
+
+  @media (max-width: (768px - 1px)) {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+// left-hand side
+.location {
+  max-width: 100%;
+
+  @media (min-width: 1024px) {
+    max-width: 60%;
+  }
+}
+
+.stats {
+  margin: 0 auto;  // center for non-flex
+  $padding: 12px;
+  width: 640px - ($padding * 2);  // subtract padding
+  // TODO(samthor): flexbox eats padding, ignoring it in alignment. We can probably do more nicely.
+  max-width: calc(100% - (#{$padding} * 2));
+  padding: $padding;
+
+  @media (min-width: 1024px) {
+    width: auto;
+    min-width: 320px;
+  }
+
+  .split {
+    flex-flow: row wrap;
+
+    &.top .data {
+      min-width: 200px;
+    }
+  }
+
+  .divider {
+    margin: 8px 0 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .stats {
+    font-size: 15px;
+    line-height: 19px;
+    big {
+      font-size: 41px;
+      line-height: 47px;
+    }
+
+    // when we are >=768px, the top data is quite large, so force its width...
+    .top .data {
+      min-width: 300px;
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .stats {
+    width: 40%;
+    justify-content: flex-start;
+    margin-top: 32px;
+
+    // top distance/delivered should be in column
+    .split.top {
+      flex-flow: column nowrap;
+    }
+  }
+}

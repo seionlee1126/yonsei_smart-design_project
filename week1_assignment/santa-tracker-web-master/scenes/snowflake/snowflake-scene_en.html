@@ -1,0 +1,295 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../scene-behavior.html">
+<link rel="import" href="../../elements/santa-state.html">
+<link rel="import" href="../../scenes/smatch/html/smatch-secret.html">
+
+<script src="snowflake-scene.min.js"></script>
+
+<!-- TODO(samthor): Upgrade styling for Polymer 1+ (#1165) -->
+<link rel="stylesheet" href="snowflake-scene.css" />
+<link rel="stylesheet" href="shared-css/footer.css" />
+<link rel="stylesheet" href="shared-css/centering.css" />
+
+<!--
+Postcard scene.
+-->
+<dom-module id="snowflake-scene">
+<template>
+  <santa-state language="{{language}}"></santa-state>
+
+  <style>
+  :host([mode="portal"]) #shareButton {
+    display: none !important;
+  }
+  #blocklyArea {
+    position: absolute;
+    top: 0;
+  }
+  </style>
+
+  <div id="module-snowflake">
+    <smatch-secret character-id="trex"></smatch-secret>
+    <div id="postcard" class="stacked-divs postcard-stacked-divs scene" hidden>
+      <div class="visualization">
+        <div class="bgs-belt selection">
+          <div class="track"></div>
+          <div data-offset="276" class="bgs-left"></div>
+          <div data-offset="24" class="bgs-right"></div>
+        </div>
+        <div class="message">
+          <div class="shadow"></div>
+          <div class="frame">
+            <div id="weather" class="frame-inner">
+              <div class="bgs">
+                <div class="bg1"></div>
+                <div class="bg2"></div>
+                <div class="bg3"></div>
+                <div class="bg4"></div>
+                <div class="bg5"></div>
+                <div class="bg6"></div>
+                <div class="bg7"></div>
+                <div class="bg8"></div>
+              </div>
+              <div class="fgs">
+                <div class="fg1"></div>
+                <div class="fg2"></div>
+                <div class="fg3"></div>
+                <div class="fg4"></div>
+                <div class="fg5"></div>
+                <div class="fg6"></div>
+                <div class="fg7"></div>
+                <div class="fg8"></div>
+              </div>
+              <div class="shadow-inner"></div>
+              <span id="text-span" class="message-text"></span>
+            </div>
+          </div>
+          <div id="heroSnowflake"></div>
+          <div class="remix-button-div remix-text remix-bar share-landing">
+            <i18n-msg msgid="snowflake_make_your_own">PLACEHOLDER_i18n</i18n-msg>
+            <button id="remixButton" on-tap="backToBlockly" class="Button remix">
+                <i18n-msg msgid="codeboogie-go">PLACEHOLDER_i18n</i18n-msg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-footer selection">
+        <div class="share-bar big-button_bar center-horiz">
+          <div class="small-button-container" on-tap="backToBlockly">
+            <span class="small-button-image"></span>
+            <span class="small-button-text">
+            <i18n-msg msgid="back_to_previous_page">PLACEHOLDER_i18n</i18n-msg>
+            </span>
+          </div>
+          <div class='snow-share-div'>
+            <button id="shareButton" class="Button button-share-snow">
+              <i18n-msg msgid="share-this">PLACEHOLDER_i18n</i18n-msg>
+            </button>
+          </div>
+        </div>
+        <div class="footer selection"></div>
+      </div>
+    </div>
+    <iframe id="blocklyArea" class="scene" src="about: blank" width="100%" height="100%" frameBorder="0" allowTransparency="true"></iframe>
+    <div style="display: none;">
+      <div id="S_message0"><i18n-msg msgid="holiday_message_0">PLACEHOLDER_i18n</i18n-msg></div>
+      <div id="S_message1"><i18n-msg msgid="holiday_message_3">PLACEHOLDER_i18n</i18n-msg></div>
+      <div id="S_message2"><i18n-msg msgid="holiday_message_4">PLACEHOLDER_i18n</i18n-msg></div>
+      <div id="S_message3"><i18n-msg msgid="holiday_message_5">PLACEHOLDER_i18n</i18n-msg></div>
+    </div>
+    <div id="landscapeMsg" class="gui">
+      <div class="force-rotate landscape">
+        <div class="force-rotate-graphic"></div>
+        <div class="force-rotate-explanation"><i18n-msg msgid="tilt">PLACEHOLDER_i18n</i18n-msg></div>
+      </div>
+    </div>
+  </div>
+
+</template>
+<script>
+(function() {
+  var dev = false;
+  Polymer({
+    is: 'snowflake-scene',
+    behaviors: [window.SantaSceneBehavior],
+    game: null,
+
+    start: function() {
+      this.backToBlockly();
+    },
+
+    properties: {
+      snowflake: String,
+
+      /** Language. Bound from `santa-state`. */
+      language: String,
+    },
+
+    attached: function() {
+      this._boundReceive = this.receiveMessage.bind(this);
+      window.addEventListener('message', this._boundReceive, false);
+    },
+
+    detached: function() {
+      window.removeEventListener('message', this._boundReceive, false);
+    },
+
+    onPreload: function() {
+      this.preloadSounds('sm_load_sounds', 15);
+      this.preloadImages([
+        'img/bgs-small.png',
+        'img/bgs.png'
+      ]);
+    },
+
+    onShow: function() {
+      var module = this.$['module-snowflake'];
+      this.fire('sound-ambient', 'sm_start');
+      this.fire('sound-ambient', 'music_start_scene');
+      this.scene = new scenes.snowflake.Scene(module);
+
+      // Set the local i18n message.
+      // TODO(madCode): This doesn't work in prod, because i18ntext is compiled out.
+      if (this.$.i18ntext) {
+        var params = getUrlParameters();
+        this.$.i18ntext.msgid = 'holiday_message_' + (params.bg || 0);
+      }
+      // nb. Note that the picker grabs bg/fg from the URL, so it doesn't need to be set here.
+      // Pass the entire query string down to the blockly iframe so it can put the blocks in the
+      // workspace. Decode the base64-encoded blocks, and pass to the frame.
+      var script = getUrlParameter('B') || '';
+      if (script) {
+        script = "?B=" + script;
+      }
+
+      var turtleFrameSrc =
+          this.resolveUrl('snowflake-maker/turtle_' + this.language + '.html' + script);
+
+      // If script exists, there's stuff to share in the url so show share page.
+      if (script) {
+        this.showShareLanding();
+      }
+      this.$.blocklyArea.contentWindow.location.replace(turtleFrameSrc);  // don't trigger nav
+      if (dev) {
+        this.blocks = "p125-s125-c006600-(r30-t125-)4-";
+        this.snowflake = 'scenes/snowflake/img/snow-test.png';
+        if (dev == 'postcard') {
+          this.showPostcard();
+        } else {
+          this.showShareLanding();
+        }
+      }
+    },
+
+    showPostcard: function() {
+      this.hideCodingScreen();
+      var postcardSelectionElements = Polymer.dom(this.root).querySelectorAll('.selection');
+      for (var i = 0; i < postcardSelectionElements.length; i++) {
+        postcardSelectionElements[i].hidden = false;
+      }
+      var shareLandingElements = Polymer.dom(this.root).querySelectorAll('.share-landing');
+      for (var i = 0; i < shareLandingElements.length; i++) {
+        shareLandingElements[i].hidden = true;
+      }
+    },
+
+    hideCodingScreen: function() {
+      // This function is called twice when loading the page, once before
+      // blockly has rendered the hero snowflake and once after.
+      // If the snowflake doesn't exist yet, let these things sit in the page
+      // while the browser does all the size calculations it needs for blockly
+      // with the div in a "visible" state.  This is
+      // especially important for firefox which does not do layout well when
+      // elements (especially iframes) are display:none.
+      if (!this.snowflake) {
+        this.$.blocklyArea.style.opacity = 0;
+        this.$.landscapeMsg.style.opacity = 0;
+        this.$.postcard.style.opacity = 1;
+      } else {
+        // Once the snowflake is ready to render, set the opacity to 1,
+        // go back to using display:none, and set the snowflake to show.
+        this.$.heroSnowflake.style.backgroundImage = 'url(' + this.snowflake + ')';
+        this.$.heroSnowflake.style.backgroundSize = '100% 100%';
+        var snowflakesList = Polymer.dom(this.root).querySelectorAll('.snow');
+        for (var i = 0; i < snowflakesList.length; i++) {
+          snowflakesList[i].style.backgroundImage = 'url(' + this.snowflake + ')';
+          snowflakesList[i].style.backgroundSize = 'contain';
+        }
+        this.$.blocklyArea.style.opacity = 1;
+        this.$.landscapeMsg.style.opacity = 1;
+        this.$.postcard.style.opacity = 1;
+        this.$.blocklyArea.hidden = true;
+        this.$.landscapeMsg.hidden = true;
+        this.$.postcard.hidden = false;
+      }
+      // Remove focus from the blockly iframe (only an issue in Firefox).
+      document.activeElement.blur();
+    },
+
+    showShareLanding: function() {
+      //this.loadBlocklyCode();
+      this.hideCodingScreen();
+      var postcardSelectionElements = Polymer.dom(this.root).querySelectorAll('.selection');
+      for (var i = 0; i < postcardSelectionElements.length; i++) {
+        postcardSelectionElements[i].hidden = true;
+      }
+      var shareLandingElements = Polymer.dom(this.root).querySelectorAll('.share-landing');
+      for (var i = 0; i < shareLandingElements.length; i++) {
+        shareLandingElements[i].hidden = false;
+      }
+    },
+
+    backToBlockly: function() {
+      this.$.postcard.hidden = true;
+      this.$.blocklyArea.hidden = false;
+      this.$.landscapeMsg.hidden = false;
+      this.scene.disposeTutorial();
+    },
+
+    onHide: function() {
+      this.scene.dispose();
+      this.scene = null;
+      this.fire('sound-ambient', 'sm_end');
+    },
+
+    receiveMessage: function(event) {
+      var iframe = this.$.blocklyArea;
+      var expectedSource = iframe.contentWindow || iframe;
+      if (event.source != expectedSource) {
+        throw new Error('unexpected source: ' + event.origin);
+      } else {
+        this.scene.blocks = event.data['blocks'];
+        switch (event.data['msg-type']) {
+          case ('updatePage'):
+            this.snowflake = event.data['snowflake'];
+            if (event.data['sharing']) {
+              this.showShareLanding();
+            } else {
+              this.showPostcard();
+              this.scene.startTutorial();
+            }
+            break;
+          case ('updateURL'):
+            this.scene.updateUrl();
+            break;
+        }
+      }
+    },
+  });
+
+})();
+</script>
+</dom-module>

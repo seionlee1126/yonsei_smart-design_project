@@ -1,0 +1,55 @@
+@import "scenes/shared/sass/_mixins.scss";
+
+html {
+  background-color: #3ec4f0;
+}
+
+body {
+  min-width: 320px;
+  position: relative;
+  overflow-x: hidden;
+  font-family: Roboto, sans-serif;
+  font-size: 12px;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+
+  &.scrollock {
+    overflow: hidden;
+  }
+
+  // Override Polymer's FOUC. Control it ourselves.
+  &[unresolved] {
+    opacity: 1 !important;
+  }
+
+  &:not([unresolved]) #unresolved_placeholder {
+    display: none;
+  }
+
+  &.posttakeoff {
+    #timer {
+      display: none;
+    }
+  }
+
+  user-select: none;
+  input {
+    user-select: all;
+  }
+}
+
+#unresolved_placeholder {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('../images/village_2x.gif') center/340px no-repeat;
+  margin-top: -120px;
+}
+
+// Import common rules.
+@import "scenes/shared/sass/_frame.scss";

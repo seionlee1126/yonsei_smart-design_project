@@ -1,0 +1,148 @@
+:host {
+  position: relative;
+}
+#map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+#legalnotices {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 10;
+  background: rgba(245, 245, 245, 1.0);
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 14px;
+  margin: 0 1px;
+  opacity: 0.7;
+}
+
+#santa {
+  width: 0;
+  height: 0;
+}
+#santa:hover {
+  cursor: pointer;
+}
+
+@import "../sass/animations";
+
+@keyframes deliver-step {
+  0% {
+    transform: translateY(0);
+  }
+  12.5% {
+    transform: translateY(-12.5%);
+  }
+  25.0% {
+    transform: translateY(-25.0%);
+  }
+  37.5% {
+    transform: translateY(-37.5%);
+  }
+  50.0% {
+    transform: translateY(-50.0%);
+  }
+  62.5% {
+    transform: translateY(-62.5%);
+  }
+  75.0% {
+    transform: translateY(-75.0%);
+  }
+  87.5% {
+    transform: translateY(-87.5%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.presents {
+  width: 75px;
+  height: 76px;  // real height is 76px
+  position: absolute;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+
+  > div {
+    // note: backgrounds are 1206 x 149, but should be 1216 x 149
+    background: transparent center no-repeat;
+    position: absolute;
+    background-size: contain;
+    width: 75px;
+    top: -3px;  // shift santa frame by this much up
+    height: 608px;
+    will-change: transform;
+    display: none;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+
+    &.active {
+      display: block;
+      animation: deliver-step 2s steps(1) infinite;
+    }
+  }
+
+  .deliver0 {
+    background-image: url(../img/presents/magic.png);
+  }
+  .deliver1 {
+    background-image: url(../img/presents/roof.png);
+  }
+  .deliver2 {
+    background-image: url(../img/presents/tree.png);
+  }
+}
+
+.sleigh {
+  width: 68px;
+  height: 84px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+
+  div {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    background: transparent center no-repeat;
+    background-size: 85%;
+
+    animation: tracker-sleigh-bounce 6s infinite ease-in-out;
+    &.front, &.back {
+      animation-name: tracker-santa-bounce;
+    }
+  }
+
+  // presents falling from the sleigh
+  div.santa:after {
+    content: '';
+    background: url(../img/sleigh/effects.svg) 50% 0 no-repeat;
+    position: absolute;
+    width: 100%;
+    top: 66%;
+    height: 44px;
+    z-index: 1;
+  }
+
+  $dirs: n ne e se s sw w nw;
+  @for $i from 1 through length($dirs) {
+    $dir: nth($dirs, $i);
+
+    &[data-dir="#{$dir}"] {
+      .front {
+        background-image: url(../img/sleigh/sleigh-#{$dir}-front.svg);
+      }
+      .santa {
+        background-image: url(../img/sleigh/sleigh-#{$dir}-santa.svg);
+      }
+      .back {
+        background-image: url(../img/sleigh/sleigh-#{$dir}-back.svg);
+      }
+    }
+  }
+}
+

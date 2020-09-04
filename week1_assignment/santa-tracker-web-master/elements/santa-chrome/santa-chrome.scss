@@ -1,0 +1,387 @@
+$toolbar-height: 44px;
+$indent-left: 24px;  // indent in the sidebar
+
+// nb. somewhat arbitrary: "Auf den Spuren des Weihnachtsmanns" plus misc takes up ~413px on left
+// using Chrome Mac 54. Thus, 1024 - (413 * 2) == 198px.
+$feature-width: 198px;
+
+:host {
+  display: block;
+}
+
+app-header {
+  background-color: transparent;
+}
+
+#fixed-background {
+  // nb. The app-header layer can be manipulated, but somewhat unreliabily. This exists under it
+  // and is made visible only when the host is .fixed.
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  background-color: currentColor;
+  visibility: hidden;
+}
+
+app-drawer {
+  z-index: 1;  // higher than sound button
+
+  #main-content {
+    position: relative;
+    height: 100%;
+  }
+
+  .drawer-content {
+    height: 100%;
+    overflow: auto;
+  }
+
+  .cards {
+    border-bottom: 4px solid #eee;
+  }
+  .links {
+    padding: 12px 12px 4px $indent-left;
+    h2 {
+      color: #7bc7e5;
+    }
+    a {
+      color: #64ae69;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  .lang {
+    padding-left: $indent-left - 4px;
+    line-height: 32px;
+    select {
+      vertical-align: middle;
+    }
+    padding-bottom: 8px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  app-toolbar.close-sidebar {
+    cursor: pointer;
+    font-family: 'Lobster';
+    font-size: 2em;
+    color: #ccc;
+  }
+
+  .menucard {
+    box-sizing: border-box;
+    height: 150px;
+    background: transparent center right no-repeat;
+    background-size: cover;
+    padding: 12px 12px 12px $indent-left;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+
+    .lock {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url(img/lock.svg) 90% 50% no-repeat;
+      background-color: rgba(87, 214, 147, 0.5);
+      background-size: 42px 42px;
+    }
+  }
+  .menucard-village {
+    background-image: url(img/menu-village.png);
+  }
+  .menucard-tracker {
+    background-image: url(img/menu-tracker.png);
+  }
+
+  h2 {
+    font-size: 1em;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin: 6px 0;
+    line-height: 1em;
+    text-transform: uppercase;
+  }
+  h3 {
+    margin: 0;
+    font-size: 2.875em;
+    line-height: 1.25em;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+    font-family: 'Lobster';
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    padding-top: 6px;
+    line-height: 1.2em;
+    font-size: 1.2em;
+    font-weight: 500;
+
+    li {
+      margin: 0;
+      padding: 0.4em 0;
+
+      a {
+        display: block;
+      }
+    }
+  }
+}
+
+app-toolbar {
+  height: $toolbar-height;
+  color: white;
+
+  paper-icon-button[drawer-toggle] {
+    margin-right: 4px;
+    min-width: 40px;
+    color: white;
+  }
+
+  // Common button reset.
+  button {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  a.linkwrap {
+    display: inline-flex;
+    max-width: 100%;
+    text-decoration: none;
+  }
+
+  #logo {
+    width: 62px;
+    min-width: 62px;
+    background: url(img/google_logo.svg) 0 14px no-repeat;
+    background-size: contain;
+  }
+
+  h1 {
+    padding-left: 4px;
+    margin: 0;
+    font-family: 'Lobster', sans-serif;
+    font-size: 19px;
+    line-height: $toolbar-height;
+    font-weight: 300;
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .title {
+    height: 100%;
+    min-width: 1px;  // nb. without any min-width, title can't be clipped to size
+    flex-grow: 1;
+  }
+
+  .feature {
+    z-index: 10;
+    height: 100%;
+    text-align: center;
+    position: relative;
+  }
+
+  .share {
+    padding: ($toolbar-height - 40px)/2 0;  // icon=40px, total=$toolbar-height;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0;  // fixes alignment issues
+
+    paper-icon-button#gplus {
+      padding: 4px;
+    }
+
+    .multi {
+      display: flex;
+    }
+
+    .sep {
+      background: rgba(0,0,0,0.125);
+      width: 1px;
+      margin: 6px;
+
+      &:first-child {
+        visibility: hidden;
+      }
+    }
+  }
+  @media (max-width: 768px - 1px) {
+    .share {
+      *:not(.share-webshare) {
+        display: none;
+      }
+    }
+  }
+
+  /**
+   * In the full village experience, make the left/right (.title/.share respectively) grow to the
+   * same center point.
+   */
+  @media (min-width: 768px) {
+    .title {
+      width: 69px - 44px;
+    }
+    .feature:not([hidden]) + .share {
+      // where there's a feature, grow the right-hand side (sharer)
+      width: 69px;
+      flex-grow: 1;
+    }
+    .feature {
+      // .. and the feature has a min-width set, for future scores/times etc
+      min-width: $feature-width;
+    }
+  }
+}
+
+.buttons {
+  $button-size: 45px;
+  pointer-events: none;
+
+  position: fixed;
+  bottom: 0;
+  padding-bottom: 24px;
+  height: $button-size;
+  display: flex;
+
+  button {
+    color: inherit;
+    height: $button-size;
+    width: $button-size;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 0;
+    border: 0;
+    margin: 0;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    background: currentColor;
+    border-radius: 100px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+    transition: transform 0.25s;
+    transform: translate(0);
+
+    &:not([disabled]) {
+      pointer-events: auto;
+    }
+
+    &[disabled] {
+      cursor: default;
+    }
+
+    &::after, &::before {
+      width: ($button-size - 14px);
+      top: 0;
+      left: 7px;
+      height: 100%;
+      position: absolute;
+      background-position: center;
+      background-repeat: no-repeat;
+      visibility: hidden;
+    }
+
+    iron-icon {
+      position: absolute;
+      left: 0;
+      top: 0;
+      padding: 2px;
+      height: ($button-size - 4px);
+      width: ($button-size - 4px);
+      fill: white;
+    }
+  }
+
+  &.primary {
+    left: 0;
+
+    button {
+      margin-left: 8px;
+
+      &[disabled] {
+        transform: translateY(24px + 10px + $button-size);
+      }
+    }
+    button:first-child {
+      margin-left: 0;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+  &.alternate {
+    right: 0;
+    color: #777;
+
+    transition: transform 0.25s ease-out;
+
+    &.hidden {
+      transform: translate(100%);
+    }
+
+    button {
+      margin-right: 8px;
+    }
+    button:last-child {
+      margin-right: 0;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  /** specific button overrides */
+
+  button#offline {
+    iron-icon {
+      left: 2px;
+      position: relative;
+      width: 33px;
+      height: 33px;
+    }
+  }
+
+  button#pause {
+    &.paused .pause,
+    &.playing .play {
+      visibility: hidden;
+    }
+  }
+
+  button#sound {
+    &::after {
+      content: '';
+      background-image: url(img/sound-on.svg);
+    }
+    &.on::after {
+      visibility: visible;
+    }
+
+    &::before {
+      content: '';
+      background-image: url(img/sound-off.svg);
+    }
+    &.off::before {
+      visibility: visible;
+    }
+  }
+}
+

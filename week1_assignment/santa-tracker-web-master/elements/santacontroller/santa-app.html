@@ -1,0 +1,1326 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../components/polymer/polymer.html">
+
+<link rel="import" href="../../components/iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../santa-badge/santa-badge.html">
+<link rel="import" href="../santa-chrome/santa-chrome.html">
+<link rel="import" href="../santa-notice/santa-notice.html">
+<link rel="import" href="../santa-tracker-router.html">
+<link rel="import" href="../preloader/preload-overlay.html">
+<link rel="import" href="../lazy-pages/lazy-pages.html">
+<link rel="import" href="../santa-strings.html">
+
+<script src="../../js/config/houses.js"></script>
+<script src="../../js/config/videos.js"></script>
+
+<!--
+Santa Tracker app.
+-->
+<dom-module id="santa-app">
+<template>
+  <!-- Shared i18n strings -->
+  <santa-strings id="strings"></santa-strings>
+
+  <!-- Global singleton state -->
+  <santa-state during-tracker="{{duringTracker}}"
+      current-time="{{currentTime}}"
+      requested-reload="{{requestedReload}}"></santa-state>
+
+  <!-- Keyboard handler -->
+  <iron-a11y-keys keys="esc enter" on-keys-pressed="_onKeysPressed"></iron-a11y-keys>
+
+  <!-- Preloading scene overlay -->
+  <preload-overlay id="preloader"></preload-overlay>
+
+  <!-- Route controller -->
+  <template is="dom-if" if="[[routing]]">
+    <santa-tracker-router route="{{route}}"></santa-tracker-router>
+  </template>
+
+  <!-- EU notice -->
+  <template is="dom-if" if="[[!omitSantaChrome(mode)]]">
+    <santa-notice></santa-notice>
+  </template>
+
+  <!-- Chrome, including toolbar and sidebar -->
+  <santa-chrome id="chrome"
+      mode$="[[mode]]"
+      disabled="[[omitSantaChrome(mode)]]"
+      today-house="[[todayHouse]]"
+      share-options="[[shareOptions]]"
+      mute="{{userMute}}"
+      pause="{{userPause}}">
+
+    <santa-badge id="badge" slot="feature"></santa-badge>
+
+    <santa-overlay id="overlay" hidden$="[[!userPause]]"
+        share-options="[[shareOptions]]"></santa-overlay>
+
+    <!-- Scenes -->
+    <lazy-pages id="lazypages"
+        selected-item="{{selectedScene}}"
+        selectable=":not([disabled])"
+        attr-for-selected="route"
+        selected-attribute="active">
+
+      <dorf-scene id="village" route="village" icon="1f384" permanent
+          today-house="[[_limitTodayHouseForCast(todayHouse, mode)]]"
+          houses="[[_limitHousesForCast(_houses, mode)]]"
+          mode$="[[mode]]"
+          path$="scenes/dorf/dorf-scene_[[language]].html"
+          class="santa-scene" allow-page-scrolling></dorf-scene>
+
+      <about-scene route="about" icon="2753" permanent
+          path$="scenes/about/about-scene_[[language]].html"
+          header-color="rgb(39, 186, 131)"
+          class="santa-scene" allow-page-scrolling></about-scene>
+
+      <educators-scene route="educators" icon="1f3eb" permanent
+          path$="scenes/educators/educators-scene.html"
+          class="santa-scene"
+          allow-page-scrolling></educators-scene>
+
+      <press-scene route="press" icon="1f4f0" permanent
+          path$="scenes/press/press-scene.html"
+          class="santa-scene"
+          allow-page-scrolling></press-scene>
+
+      <!-- Keep scenes (non-village) ordered alphabetically -->
+
+      <airport-scene route="airport" icon="1f6c4"
+          path$="scenes/airport/airport-scene_[[language]].html"
+          header-color="#fdbe27"
+          feature-color="#83ce00"
+          logo="scenes/airport/img/logo.svg"
+          class="santa-scene"></airport-scene>
+
+      <blimp-scene route="blimp" icon="1f6a1"
+          path$="scenes/blimp/blimp-scene_[[language]].html"
+          header-color="#575769"
+          class="santa-scene"></blimp-scene>
+
+      <boatload-scene route="boatload" icon="26f5"
+          path$="scenes/boatload/boatload-scene_[[language]].html"
+          mode$="[[mode]]"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/boatload/img/loading.svg"
+          logo="scenes/boatload/img/logo.svg"
+          class="santa-scene"></boatload-scene>
+
+      <briefing-scene route="briefing" icon="1f634"
+          path$="scenes/briefing/briefing-scene_[[language]].html"
+          header-color="#007ab6"
+          logo="scenes/briefing/img/logo.svg"
+          class="santa-scene"></briefing-scene>
+
+      <callfromsanta-scene route="callfromsanta" icon="1f4de" disabled
+          path$="scenes/callfromsanta/callfromsanta-scene.html"
+          mute="[[userMute]]"
+          loading-bg-color="rgb(129,208,0)"
+          logo="scenes/callfromsanta/img/logo.svg"
+          class="santa-scene"></callfromsanta-scene>
+
+      <citylights-scene route="citylights" icon="1f306"
+          path$="scenes/citylights/citylights-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#575769"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/citylights/img/loading.svg"
+          logo="scenes/citylights/img/logo.svg"
+          class="santa-scene"></citylights-scene>
+
+      <codeboogie-scene route="codeboogie" icon="1f4dd"
+          path$="scenes/codeboogie/codeboogie-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#9a519f"
+          loading-bg-color="#3f4ea1"
+          loading-src="scenes/codeboogie/img/loading.svg"
+          hero-src="scenes/codeboogie/img/share.svg"
+          logo="scenes/codeboogie/img/logo.svg"
+          class="santa-scene"></codeboogie-scene>
+
+      <codelab-scene route="codelab" icon="1f4dd"
+          path$="scenes/codelab/codelab-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#9a519f"
+          loading-bg-color="#3f4ea1"
+          loading-src="scenes/codelab/img/loading.svg"
+          logo="scenes/codelab/img/logo.svg"
+          class="santa-scene"></codelab-scene>
+
+      <commandcentre-scene route="commandcentre" icon="1f5fc"
+          path$="scenes/commandcentre/commandcentre-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#575769"
+          loading-bg-color="rgb(129,208,0)"
+          logo="scenes/commandcentre/img/logo.svg"
+          class="santa-scene"></commandcentre-scene>
+
+      <factory-scene route="factory" icon="1f3ed"
+          path$="scenes/factory/factory-scene_[[language]].html"
+          loading-bg-color="rgb(129,208,0)"
+          logo="scenes/factory/img/logo.svg"
+          class="santa-scene"></factory-scene>
+
+      <glider-scene route="glider" icon="1f343"
+          path$="scenes/glider/glider-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#675ab9"
+          loading-bg-color="#8d23a9"
+          loading-src="scenes/glider/img/loading.svg"
+          logo="scenes/glider/img/logo.svg"
+          class="santa-scene"></glider-scene>
+
+      <gumball-scene route="gumball" icon="1f36d"
+          path$="scenes/gumball/gumball-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#fdbe27"
+          loading-bg-color="#8d23a9"
+          loading-src="scenes/gumball/img/loading.svg"
+          logo="scenes/gumball/img/logo.svg"
+          class="santa-scene"></gumball-scene>
+
+      <icecave-scene route="icecave" icon="2744"
+          path$="scenes/icecave/icecave-scene_[[language]].html"
+          class="santa-scene"></icecave-scene>
+
+      <island-scene route="island" icon="1f334"
+          path$="scenes/island/island-scene_[[language]].html"
+          header-color="#1da1a1"
+          class="santa-scene"></island-scene>
+
+      <jamband-scene route="jamband" icon="1f3b6"
+          path$="scenes/jamband/jamband-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#fdbe27"
+          loading-bg-color="#fdbe27"
+          loading-src="scenes/jamband/img/loading.svg"
+          hero-src="scenes/jamband/img/share.svg"
+          logo="scenes/jamband/img/logo.svg"
+          class="santa-scene"></jamband-scene>
+
+      <jetpack-scene route="jetpack" icon="1f680"
+          path$="scenes/jetpack/jetpack-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#9a519f"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/jetpack/img/loading.svg"
+          logo="scenes/jetpack/img/logo.svg"
+          class="santa-scene"></jetpack-scene>
+
+      <latlong-scene route="latlong" icon="1f3af"
+          path$="scenes/latlong/latlong-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#76b1cc"
+          loading-bg-color="#ffcc00"
+          loading-src="scenes/latlong/img/loading.svg"
+          logo="scenes/latlong/img/logo.svg"
+          class="santa-scene"></latlong-scene>
+
+      <newtracker-scene route="tracker" icon="1f30d" permanent
+          path$="scenes/newtracker/newtracker-scene_[[language]].html"
+          minimal-ui="[[omitSantaChrome(mode)]]"
+          header-color="#00cc81"
+          class="santa-scene" allow-page-scrolling></newtracker-scene>
+
+      <matching-scene route="matching" icon="1f6aa"
+          path$="scenes/matching/matching-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#76b1cc"
+          loading-bg-color="#b27644"
+          loading-src="scenes/matching/img/loading.svg"
+          logo="scenes/matching/img/logo.svg"
+          class="santa-scene"></matching-scene>
+
+      <mercator-scene route="mercator" icon="1f30e"
+          path$="scenes/mercator/mercator-scene_[[language]].html"
+          mode$="[[mode]]"
+          loading-bg-color="#fbbf2c"
+          loading-src="scenes/mercator/img/loading.svg"
+          logo="scenes/mercator/img/logo.svg"
+          class="santa-scene"></mercator-scene>
+
+      <penguindash-scene route="penguindash" icon="1f680"
+          path$="scenes/penguindash/penguindash-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#9a519f"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/penguindash/img/loading.svg"
+          logo="scenes/penguindash/img/logo.svg"
+          class="santa-scene"></penguindash-scene>
+
+      <playground-scene route="playground" icon="1f3aa"
+          path$="scenes/playground/playground-scene_[[language]].html"
+          header-color="#575769"
+          loading-bg-color="rgb(251, 191, 44)"
+          logo="scenes/playground/img/logo.svg"
+          class="santa-scene"></playground-scene>
+
+      <postcard-scene route="postcard" icon="1f4ec"
+          path$="scenes/postcard/postcard-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="rgb(244, 123, 32)"
+          loading-bg-color="rgb(244, 123, 32)"
+          loading-src="scenes/postcard/img/loading.gif"
+          logo="scenes/postcard/img/logo.svg"
+          class="santa-scene"></postcard-scene>
+
+      <presentbounce-scene route="presentbounce" icon="1f381"
+          path$="scenes/presentbounce/presentbounce-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#e53935"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/presentbounce/img/loading.svg"
+          logo="scenes/presentbounce/img/logo.svg"
+          class="santa-scene"></presentbounce-scene>
+
+      <presentdrop-scene route="presentdrop" icon="1f381"
+          path$="scenes/presentdrop/presentdrop-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#b4b6b9"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/presentdrop/img/loading.svg"
+          logo="scenes/presentdrop/img/logo.svg"
+          class="santa-scene"></presentdrop-scene>
+
+      <racer-scene route="racer" icon="1f3c1"
+          path$="scenes/racer/racer-scene_[[language]].html"
+          mode$="[[mode]]"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/racer/img/loading.svg"
+          logo="scenes/racer/img/logo.svg"
+          class="santa-scene"></racer-scene>
+
+      <rollercoaster-scene route="rollercoaster" icon="1f3a2"
+          path$="scenes/rollercoaster/rollercoaster-scene.html"
+          logo="scenes/rollercoaster/img/logo.svg"
+          class="santa-scene"></rollercoaster-scene>
+
+      <runner-scene route="runner" icon="1f3c7"
+          path$="scenes/runner/runner-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#575769"
+          logo="scenes/runner/img/logo.svg"
+          class="santa-scene"></runner-scene>
+
+      <santasearch-scene route="santasearch"
+          path$="scenes/santasearch/santasearch-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#00904a"
+          loading-bg-color="#29B6F6"
+          loading-src="scenes/santasearch/img/loading.svg"
+          hero-src="scenes/santasearch/img/gameover.svg"
+          class="santa-scene"></santasearch-scene>
+
+      <santaselfie-scene route="santaselfie" icon="1f488"
+          path$="scenes/santaselfie/santaselfie-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#4172e8"
+          loading-bg-color="#83D7F5"
+          loading-src="scenes/santaselfie/img/loading.svg"
+          hero-src="scenes/santaselfie/img/share.svg"
+          logo="scenes/santaselfie/img/pole.svg"
+          class="santa-scene"></santaselfie-scene>
+
+      <seasonofgiving-scene route="seasonofgiving" icon="1f3ee"
+          path$="scenes/seasonofgiving/seasonofgiving-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#09904a"
+          loading-src="scenes/seasonofgiving/img/loading.svg"
+          logo="scenes/seasonofgiving/img/header-icon.svg"
+          class="santa-scene"></seasonofgiving-scene>
+
+      <smatch-scene route="smatch"
+          path$="scenes/smatch/smatch-scene_[[language]].html"
+          header-color="#00C6ED"
+          loading-bg-color="rgb(129,208,0)"
+          class="santa-scene"></smatch-scene>
+
+      <snowflake-scene route="snowflake"
+          path$="scenes/snowflake/snowflake-scene_[[language]].html"
+          loading-bg-color="rgb(129,208,0)"
+          class="santa-scene"></snowflake-scene>
+
+      <streetview-scene route="streetview" icon="1f3a5"
+          path$="scenes/streetview/streetview-scene_[[language]].html"
+          loading-bg-color="rgb(129,208,0)"
+          logo="scenes/streetview/img/logo.svg"
+          class="santa-scene"></streetview-scene>
+
+      <tracker-scene route="tracker2015" icon="1f30d"
+          path$="scenes/tracker/tracker-scene_[[language]].html"
+          class="santa-scene"
+          allow-page-scrolling></tracker-scene>
+
+      <traditions-scene route="traditions" icon="1f4cc"
+          path$="scenes/traditions/traditions-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#fdbe27"
+          loading-bg-color="rgb(255,224,0)"
+          loading-src="scenes/traditions/img/loading.gif"
+          logo="scenes/traditions/img/traditions_icon.svg"
+          class="santa-scene"></traditions-scene>
+
+      <translations-scene route="translations" icon="1f4e2"
+          path$="scenes/translations/translations-scene_[[language]].html"
+          mode$="[[mode]]"
+          header-color="#558b2f"
+          feature-color="#83ce00"
+          loading-bg-color="#8fd7f7"
+          loading-src="scenes/translations/img/loading.png"
+          logo="scenes/translations/img/logo.svg"
+          class="santa-scene"></translations-scene>
+
+      <trivia-scene route="trivia"
+          path$="scenes/trivia/trivia-scene_[[language]].html"
+          logo="scenes/traditions/img/traditions_icon.svg"
+          class="santa-scene"></trivia-scene>
+
+      <undersea-scene route="undersea" icon="1f30a"
+          path$="scenes/undersea/undersea-scene_[[language]].html"
+          header-color="#ba594e"
+          class="santa-scene"></undersea-scene>
+
+      <template is="dom-repeat" items="[[_computeVideoRoutes(_videos)]]">
+        <video-scene route$="[[item]]" icon="1f4fd"
+            youtube-id$="[[_computeVideoId(_videos, item)]]"
+            mode$="[[mode]]"
+            mute="[[userMute]]"
+            pause="[[userPause]]"
+            header-color="#ec4582"
+            path="scenes/videoscene/video-scene.html"
+            class="santa-scene"></video-scene>
+      </template>
+
+      <windtunnel-scene route="windtunnel" icon="1f38f"
+          path$="scenes/windtunnel/windtunnel-scene_[[language]].html"
+          header-color="#575769"
+          loading-bg-color="rgb(129,208,0)"
+          logo="scenes/windtunnel/img/logo.svg"
+          class="santa-scene"></windtunnel-scene>
+
+      <wrapbattle-scene route="wrapbattle" icon="1f4fb"
+          path$="scenes/wrapbattle/wrapbattle-scene_[[language]].html"
+          header-color="#1866be"
+          feature-color="#003799"
+          loading-bg-color="#1866be"
+          logo="scenes/wrapbattle/img/logo.svg"
+            class="santa-scene"></wrapbattle-scene>
+    </lazy-pages>
+
+  </santa-chrome>
+
+</template>
+<script>
+(function() {
+
+var META_THEME = document.head.querySelector('meta[name="theme-color"]')
+    || document.createElement('meta');
+var META_THEME_DEFAULT = META_THEME.content;
+
+var TRACKER_ROUTE = 'tracker';
+
+var ANALYTICS = new Analytics();
+
+Polymer({
+  is: 'santa-app',
+  hostAttributes: {'tabindex': '0'},
+
+  properties: {
+
+    /**
+     * The size of the header, if any. Used by games to adjust their size.
+     */
+    headerSize: {
+      type: Number,
+      readOnly: true,
+      value: 44
+    },
+
+    /**
+     * Whether to use the History API for routing.
+     */
+    routing: {
+      type: Boolean,
+      reflectToAttribute: true,
+      value: false,
+    },
+
+    /**
+     * The house metadata, including unlock information.
+     */
+    _houses: {
+      type: Array,
+      readOnly: true,
+      value: window.HOUSES,
+    },
+
+    /**
+     * The house open today.
+     */
+    todayHouse: {
+      type: String,
+      value: '',
+      notify: true
+    },
+
+    /**
+     * List of video routes. Used for template binding.
+     */
+    _videos: {
+      type: Object,
+      readOnly: true,
+      value: window.VIDEOS,
+    },
+
+    /**
+     * Whether sounds are muted by the user.
+     */
+    userMute: {
+      type: Boolean,
+      observer: '_userMuteChanged',
+    },
+
+    /**
+     * Whether the game is paused by the user. Only effects games that can actually be paused!
+     */
+    userPause: {
+      type: Boolean,
+      value: false,
+    },
+
+    /**
+     * Whether the page is currently in the background.
+     */
+    pageInBackground: {
+      type: Boolean,
+      readOnly: true,
+    },
+
+    /**
+     * Whether the current game should be paused (if it can be paused), based on (userPause ||
+     * pageInBackground).
+     */
+    pause: {
+      type: Boolean,
+      computed: '_computePause(userPause, pageInBackground)',
+      observer: '_pauseChanged',
+    },
+
+    /**
+     * The current language locale. This is not modifable after launch; reload the site.
+     */
+    language: {
+      type: String,
+      readOnly: true,
+      value: document.documentElement.lang || 'en'
+    },
+
+    /**
+     * The currently open scene.
+     */
+    selectedScene: {
+      type: Element,
+      observer: '_selectedSceneChanged',
+      value: null
+    },
+
+    /**
+     * The previously selected scene route.
+     */
+    prevSelectedRoute: {
+      type: String,
+      observer: '_prevSelectedRouteChanged',
+      value: null
+    },
+
+    /**
+     * Current URL route.
+     */
+    route: {
+      type: String,
+      observer: '_routeChanged'
+    },
+
+    /** Whether the schedule is checked. If false, houses will remain unlocked. */
+    scheduleChecked: {
+      type: Boolean,
+      value: !window.DEV,
+      observer: '_scheduleCheckedChanged',
+    },
+
+    /**
+     * The mode of Santa Tracker. Possible values are blank, 'cast', 'portal',
+     * or 'embed'.
+     *
+     * 'portal': Portal mode indicates that Santa Tracker is being run in a web
+     * kiosk or similar device.
+     *
+     * 'cast': Cast mode indicates that Santa Tracker is being run on a casted
+     * device.
+     *
+     * 'embed': embed mode indicates that a Santa Tracker scene is being called
+     * from within one of the native Santa Tracker frontends (e.g. Android/iOS
+     * app).
+     */
+    mode: {
+      type: String,
+      value: ""
+    },
+
+    /**
+     * True when the tracker intro scene was shown. Used by `tracker-scene`.
+     */
+    hasTrackerIntroShown: {
+      type: Boolean,
+      value: false
+    },
+
+    /**
+     * True when the countdown is complete, and the tracker is active. Bound from `santa-state`.
+     */
+    duringTracker: {
+      type: Boolean,
+      notify: true,
+      observer: '_duringTrackerChanged',
+    },
+
+    /**
+     * Current time as per the Santa API. Bound from `santa-state`. This is updated only every few
+     * minutes.
+     */
+    currentTime: {
+      type: Number,
+      observer: '_currentTimeChanged',
+    },
+
+    /**
+     * Whether a reload has been requested. Bound from `santa-state`.
+     */
+    requestedReload: Boolean,
+
+    /**
+     * The networks that Santa can share to.
+     */
+    shareOptions: {
+      type: Array,
+      value: function() {
+        var options = navigator.share ? ['webshare'] : ['gplus', 'twitter', 'facebook'];
+        return Object.freeze(options);
+      },
+      readOnly: true,
+    },
+
+  },
+
+  listeners: {
+    'click': 'onClick',
+    'scene-progress': 'onSceneProgress',
+    'scene-failure': 'onSceneFailure',
+    'scene-ready': 'onSceneReady',
+    'analytics-track-event': 'trackEvent',
+    'analytics-time-start': 'timeStart',
+    'analytics-time-end': 'timeEnd',
+    'analytics-track-game-start': 'trackGameStart',
+    'analytics-track-game-quit': 'trackGameQuit',
+    'analytics-track-game-over': 'trackGameOver',
+    'game-start': 'onStartGame',
+    'game-extra': 'onGameExtra',
+    'game-resume': 'onResumeGame',
+    'game-stop': 'onStopGame',
+    'game-score': 'onScoreGame',
+    'share': 'onShare',
+  },
+
+  created: function() {
+    // silence the noisy things
+    if (!window.DEV) {
+      console.log = function() {};
+    }
+
+    // prepareHouses code: before anything else. This needs to happen here because otw
+    // _currentTimeChanged can actually be invoked before ready: is called.
+    // TODO(samthor): This could be moved outside `santa-app`, it doesn't use any state.
+
+    var portalMode = getUrlParameter('api_client') === 'web_portal';
+    var ios = navigator.userAgent.match(/iPhone|iPod|iPad/i);
+
+    for (var i = 0, house; house = window.HOUSES[i]; ++i) {
+      house.disabled = false;
+      house.locked = !window.DEV;  // initial state
+      switch (house.module) {
+        case 'app':
+          // Disable Google Play house on iOS devices
+          house.disabled |= (ios || portalMode);
+          break;
+      }
+    }
+  },
+
+  ready: function() {
+    if (getUrlParameter('api_client') === 'web_portal') {
+      this.mode = 'portal';
+      this._setShareOptions([]);
+    }
+
+    var staticUrl = this.resolveUrl('../../');
+
+    // Don't load sounds in Cast mode.
+    if (!this.omitSantaChrome(this.mode)) {
+      var sc = new SoundController(staticUrl, this._soundsLoaded.bind(this));
+      this.addEventListener('sound-preload', sc.loadSounds.bind(sc));
+      this.addEventListener('sound-ambient', sc.playAmbientSounds.bind(sc));
+      this.addEventListener('sound-trigger', sc.playSound.bind(sc));
+    }
+
+    var handler = function() {
+      this._setPageInBackground(document.hidden || false);
+    }.bind(this);
+    document.addEventListener('visibilitychange', handler);
+    handler();
+  },
+
+  attached: function() {
+    if (this.route === undefined) {
+      var route = this.defaultRoute;
+      if (window.location.hash) {
+        // drop old query #foo?blah=1...
+        var parts = window.location.hash.substr(1).split('?');
+        route = parts[0] || route;
+      }
+      this.route = route;
+    }
+  },
+
+  detached: function() {
+    throw new Error('santa-app was detached');
+  },
+
+  onClick: function(ev) {
+    var link = ev.target.closest('a[href]');
+    if (!link) { return; }
+
+    // Ignore if a reload was requested. Allow the new page to load naturally!
+    if (this.requestedReload) { return; }
+
+    // Ignore hash links.
+    if (link.getAttribute('href').substr(0, 1) === '#') { return; }
+
+    // Ignore if some weird meta keys are hit, this is probably 'open in new tab'.
+    if (ev.ctrlKey || ev.metaKey || ev.which > 1) { return; }
+
+    // Check domain/origin/etc.
+    var targetUrl = new URL(link.href);
+    if (targetUrl.origin !== window.location.origin) { return; }
+
+    // Check the URLs have the same dirname (e.g. "/foo/bar/" vs "/foo/bar/zing.html").
+    var lastSlash = window.location.pathname.lastIndexOf('/');
+    if (targetUrl.pathname.lastIndexOf('/') !== lastSlash) { return; }
+
+    // Pull out either the flat "/", or "/foo.html" at this path.
+    var m = /\/(?:(\w+)\.html|)$/.exec(targetUrl.pathname.substr(lastSlash));
+    if (!m) { return; }
+
+    // Good job! You found a route. But throw it out if it's invalid for some reason.
+    var route = m[1] || this.defaultRoute;
+    if (!this.sceneIsValid(route)) { return; }
+
+    // If this is the same route, then close the drawer. It was probably a sidebar click.
+    if (this.route === route) {
+      this.$.chrome.closeDrawer();
+    }
+
+    // Set the route. Hooray! \o/
+    this.route = route;
+    ev.preventDefault();
+  },
+
+  /**
+   * Handles a loading progress hint, hiding or displaying the preloader.
+   */
+  onSceneProgress: function() {
+    var scene = this.selectedScene;
+    if (scene) {
+      this.$.preloader.color = scene.getAttribute('loading-bg-color');
+      this.$.preloader.src = scene.getAttribute('loading-src');
+      this.$.preloader.active = !scene.loaded;
+      this.$.preloader.value = scene.preloadProgress || 0;  // prevent undefined
+    } else {
+      this.$.preloader.active = false;
+    }
+  },
+
+  /**
+   * Handles a preloader failure.
+   */
+  onSceneFailure: function() {
+    this.$.preloader.active = false;
+    this._updateStylingForScene(null);
+  },
+
+  /**
+   * Called when a scene is initially ready (and not when it's made active a 2nd time).
+   */
+  onSceneReady: function(event, scene) {
+    this._prepareScene(scene);
+  },
+
+  get defaultRoute() {
+    if (this.duringTracker) {
+      return TRACKER_ROUTE;
+    } else {
+      return 'village';
+    }
+  },
+
+  /**
+   * Reset and update various bits of global state when a new scene is made visible.
+   */
+  _selectedSceneChanged: function(newValue, oldValue) {
+    this.$.chrome.hasGameButtons = false;
+    this.$.chrome.closeDrawer();
+    this.userPause = false;
+
+    if (oldValue && oldValue.route) {
+      this.prevSelectedRoute = oldValue.route;
+    }
+
+    this._updateStylingForScene(this.selectedScene);
+
+    if (this.selectedScene && this.selectedScene.is) {
+      this._prepareScene(this.selectedScene);
+    }
+  },
+
+  _updateStylingForScene: function(scene) {
+    var allowPageScrolling = scene ? scene.hasAttribute('allow-page-scrolling') : true;
+
+    // Allow scrolling body if scene requests it. Update `santa-chrome` to match.
+    if (allowPageScrolling) {
+      document.body.classList.remove('scrollock');
+      this.$.chrome.classList.remove('fixed');
+    } else {
+      document.body.classList.add('scrollock');
+      this.$.chrome.classList.add('fixed');
+    }
+
+    // Update custom colors and themes.
+    var headerColor = scene && scene.getAttribute('header-color');
+    this.customStyle['--santa-header-color'] = headerColor;
+    this.customStyle['--santa-feature-color'] = scene && scene.getAttribute('feature-color');
+    this.updateStyles();
+    META_THEME.content = headerColor || META_THEME_DEFAULT;
+
+    this.$.badge.reset();
+    this.$.badge.logoUrl = scene ? scene.getAttribute('logo') : null;
+
+    // TODO(samthor): This isn't quite right: the badge should be visible if there's a logo or a
+    // score. But for now, just hide it when there's no logo.
+    this.$.badge.hidden = !this.$.badge.logoUrl;
+
+    // Reset the overlay.
+    this.$.overlay.reset();
+    this.$.overlay.hero = scene && scene.getAttribute('hero-src');
+
+    // Optionally update the document title (with emoji/scene name).
+    if (this.routing) {
+      var raw = scene && scene.getAttribute('icon');
+      var icon = '';
+      if (raw && String.fromCodePoint) {  // no emoji on IE11
+        icon = String.fromCodePoint(parseInt(raw, 16));
+      }
+      document.title = icon + this.$.strings.s('meta_title');
+    }
+  },
+
+  /**
+   * Called when a scene is brought to the foreground and is an upgraded Polymer element.
+   */
+  _prepareScene: function(scene) {
+    if (scene && 'pause' in scene) {
+      this.$.overlay.pregame = true;
+      this.userPause = true;
+    }
+  },
+
+  _prevSelectedRouteChanged: function() {
+    // Find and remove the previous scene, if it exists and isn't a permanent scene.
+    var prevSelectedScene = this.$.lazypages.getRoute(this.prevSelectedRoute);
+    if (!prevSelectedScene || prevSelectedScene.hasAttribute('permanent')) {
+      return;
+    }
+    var dom = Polymer.dom(this.$.lazypages);
+    dom.removeChild(prevSelectedScene);
+
+    // Re-construct removed scene and add it back to lazy-pages. Note that
+    // loading-* isn't copied, since the element is already loaded.
+    var el = document.createElement(prevSelectedScene.localName);
+    el.route = prevSelectedScene.route;
+    el.className = prevSelectedScene.className;
+    el.santaApp = this;
+    el.loaded = true;
+
+    var retainAttr = [
+      'route', 'mode', 'allow-page-scrolling', 'header-color', 'feature-color', 'youtube-id', 'hero-src', 'logo'
+    ];
+    retainAttr.forEach(function(attr) {
+      if (prevSelectedScene.hasAttribute(attr)) {
+        el.setAttribute(attr, prevSelectedScene.getAttribute(attr));
+      }
+    });
+
+    dom.appendChild(el);
+  },
+
+  /**
+   * The local route was changed. If valid, then trigger lazypages to load it. This is also invoked
+   * by _currentTimeChanged, in order to lock/unlock scenes that are loaded but currently invalid.
+   */
+  _routeChanged: function(newValue) {
+    var route = this.route;
+    var ok = this.sceneIsValid(route);
+    var sceneIsOpen = this.sceneIsOpen(route);
+
+    if (sceneIsOpen === false && ok) {
+      if (window.DEV) {
+        console.debug('prod would lock', route);
+      } else {
+        ok = false;
+      }
+    }
+
+    // check newValue: if called from _currentTimeChanged, it will be undefined, so ignore.
+    if (route !== undefined && newValue !== undefined) {
+      if (ok) {
+        this.debounce('_routeChanged', function() {
+          window.ga('set', 'page', '/' + this.route);
+          window.ga('send', 'pageview');
+        }, 10);
+      } else if (sceneIsOpen === undefined) {
+        var previousRoute = this.selectedScene ? this.selectedScene.route : '';
+        window.ga('send', 'event', 'Routing', 'Invalid Route Source', '/' + previousRoute);
+        window.ga('send', 'event', 'Routing', 'Invalid Route', '/' + route);
+      } else {
+        window.ga('send', 'event', 'Routing', 'Locked Route', '/' + route);
+      }
+    }
+
+    this.$.lazypages.selected = ok ? route : '';
+    this.$.lazypages.lockedHouse = (!ok && sceneIsOpen === false ? route : null);
+
+    // TODO(samthor): Unkown routes will show a generic error message.
+  },
+
+  /**
+   * Starts the current game, if it can be started, and it has not already been started.
+   * Checks that the overlay is in pregame state.
+   * TODO(samthor): This state machine is ugly. Clean it up.
+   */
+  maybeStartGame: function() {
+    var scene = this.selectedScene;
+    if (scene && 'pause' in scene && !this.$.chrome.hasGameButtons && this.$.overlay.pregame) {
+      this.onStartGame();
+    }
+  },
+
+  /**
+   * Handler for 'game-start' event. Resests overlay state, and if the game supports pausing,
+   * shows those buttons and starts the scene.
+   */
+  onStartGame: function() {
+    this.userPause = false;
+    this.$.overlay.reset();
+
+    var scene = this.selectedScene;
+    if (scene) {
+      if ('pause' in scene) {
+        this.$.chrome.hasGameButtons = true;
+      }
+      scene.start && scene.start();
+    }
+  },
+
+  /**
+   * Handler for 'game-extra' event. Resests overlay state, and if the game
+   * has extra levels, starts the game at extra level.
+   */
+  onGameExtra: function() {
+    this.userPause = false;
+    this.$.overlay.reset();
+
+    var scene = this.selectedScene;
+    if (scene) {
+      scene.playExtra && scene.playExtra();
+    }
+  },
+
+  /** Handler for 'game-resume' event. Just unpauses. */
+  onResumeGame: function() {
+    this.userPause = false;
+  },
+
+  /** Handler for 'game-stop' event. Fired by the gameover shared JS component. */
+  onStopGame: function(event, detail) {
+    this.$.chrome.hasGameButtons = false;
+
+    var o = this.$.overlay;
+    detail = detail || {};
+    o.score = 'score' in detail ? detail.score : null;  // allow zero
+    o.playExtra = detail.hasPlayExtra || false;
+    o.shareUrl = detail.url || null;
+
+    this.userPause = true;
+  },
+
+  onScoreGame: function(event, detail) {
+    this.$.badge.score = detail.score !== undefined ? detail.score : null;
+    this.$.badge.level = detail.level || null;
+    this.$.badge.levels = detail.levels || null;
+    this.$.badge.time = detail.time || null;
+  },
+
+  _computePause: function(userPause, pageInBackground) {
+    return userPause || pageInBackground;
+  },
+
+  _pauseChanged: function(pause) {
+    var scene = this.selectedScene;
+    if (scene && 'pause' in scene) {  // nb. does it implement SantaSceneGameButtonsBehavior
+      scene.pause = pause;
+    }
+    if (!pause) {
+      this.selectedScene && this.selectedScene.focus();
+    }
+  },
+
+  _userMuteChanged: function(userMute) {
+    // It's possible to confuse Klang, so dedup this with a very short delay.
+    this.debounce('_userMute', function() {
+      this.fire('sound-ambient', this.userMute ? 'global_sound_off' : 'global_sound_on');
+    }, 50);
+  },
+
+  _soundsLoaded: function(soundsName) {
+    // _soundsLoaded is typically invoked after a scene preloads audio, but the
+    // scene may have changed in that time, so check upgraded state again.
+    if (this.selectedScene && this.selectedScene.fire) {
+      this.selectedScene.fire('sounds-loaded', soundsName);
+    }
+  },
+
+  trackEvent: function(e, detail) {
+    ANALYTICS.trackEvent(
+        detail.category, detail.action, detail.label, detail.value);
+  },
+
+  timeStart: function(e, detail) {
+    ANALYTICS.timeStart(
+        detail.category, detail.variable, detail.time);
+  },
+
+  timeEnd: function(e, detail) {
+    ANALYTICS.timeEnd(
+        detail.category, detail.variable, detail.time, detail.label, detail.maxTime);
+  },
+
+  trackGameStart: function(e, detail) {
+    ANALYTICS.trackGameStart(detail.gameId || detail.gameid);
+  },
+
+  trackGameQuit: function(e, detail) {
+    ANALYTICS.trackGameQuit(detail.gameId || detail.gameid,
+        detail.level, detail.timePlayed);
+  },
+
+  trackGameOver: function(e, detail) {
+    ANALYTICS.trackGameOver(
+        detail.gameId || detail.gameid, detail.score, detail.level,
+        detail.timePlayed);
+  },
+
+  unlockAllHouses: function() {
+    window.ga('send', 'event', 'Routing', 'unlockAllHouses');
+    for (var i = 0, house; house = this._houses[i]; ++i) {
+      house.locked = false;
+    }
+    if (this.scheduleChecked) {
+      this.scheduleChecked = false;
+    } else {
+      this._routeChanged();  // scheduleChecked was already false, force update
+    }
+    this._notifyHouses();
+  },
+
+  /**
+   * Determines whether a given scene is open. This is a superset of unlocked, which is whether
+   * the scene is visibily unlocked in the village. Scenes are open as soon as any place on Earth
+   * matches the launch date (e.g., a scene is open for everyone as soon as someone in New Zealand
+   * has access to it).
+   *
+   * @return {boolean=} true if open, false if not, or undefined if unknown
+   */
+  sceneIsOpen: function(sceneName) {
+    if (this.currentTime === undefined) {
+      return true;  // fail open before time ready
+    } else if (sceneName === 'village' || sceneName === 'cast') {
+      return true;  // village
+    } else if (sceneName === TRACKER_ROUTE && !this.duringTracker) {
+      return false;  // special-case tracker, as it's open only when Santa is in flight
+    }
+
+    var targetOffset = -14 * (60 * 60000);  // UTC+14 is pretty far east
+    var dateNow = new Date(this.currentTime);
+    var userOffset = dateNow.getTimezoneOffset() * 60000;
+    var eastDateNow = new Date(+dateNow + (userOffset - targetOffset));
+
+    for (var i = 0, house; house = this._houses[i]; ++i) {
+      if (house.module === sceneName) {
+        if (house.disabled) {
+          return false;
+        } else if (!house.locked) {
+          return true;
+        }
+        var launchDate = house.launchDate;
+        if (santaApp.mode == 'portal' && house.portalLaunchDate) {
+          launchDate = house.portalLaunchDate;
+        }
+        return eastDateNow > launchDate;
+      }
+    }
+
+    return undefined;  // couldn't find this scene/house, defer to caller
+  },
+
+  sceneIsValid: function(sceneName) {
+    if (this.$.lazypages.isValidRoute(sceneName)) {
+      return true;
+    }
+    for (var i = 0, house; house = this._houses[i]; ++i) {
+      if (house.module === sceneName) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _scheduleCheckedChanged: function() {
+    // This calls _routeChanged internally.
+    this._currentTimeChanged();
+  },
+
+  /**
+   * Unlocks the correct houses based on the day (index).
+   * @private
+   */
+  _currentTimeChanged: function() {
+    var todayDate = new Date(this.currentTime || Date.now());
+    var todayHouse = '';
+    var change = false;
+
+    switch (todayDate.getMonth()) {
+      case 0:  // January
+        // fall-through to December logic
+      case 11: // December
+        for (var i = 0, house; house = this._houses[i]; ++i) {
+          var launchDate = house.launchDate;
+          if (santaApp.mode == 'portal' && house.portalLaunchDate) {
+            launchDate = house.portalLaunchDate;
+          }
+          if (isSameDay(launchDate, todayDate)) {
+            todayHouse = house.module;
+          }
+          if (this.scheduleChecked) {
+            var locked = (launchDate > todayDate);
+            if (house.locked !== locked) {
+              change = true;
+              house.locked = locked;
+            }
+          }
+        }
+        break;
+      default:
+        if (this.scheduleChecked) {
+          for (var i = 0, house; house = this._houses[i]; ++i) {
+            if (!house.locked) {
+              change = true;
+              house.locked = true;
+            }
+          }
+        }
+        break;
+    }
+    this.todayHouse = todayHouse;
+    change && this._notifyHouses();
+
+    this._routeChanged();  // hint to load/unload route
+  },
+
+  _onKeysPressed: function(e, detail) {
+    switch (detail.key) {
+      case 'esc':
+        var wasOpen = this.$.chrome.closeDrawer();
+        if (!wasOpen) {
+          this.route = this.defaultRoute;
+        }
+        break;
+      case 'enter':
+        this.maybeStartGame();
+        break;
+    }
+  },
+
+  _duringTrackerChanged: function(newValue, oldValue) {
+    if (this.mode === 'cast') {
+      this.route = this.defaultRoute;
+    } else if (oldValue === undefined && newValue === true) {
+      this.debounce('_duringTrackerChanged', function() {
+        if (this.duringTracker && (this.route === 'village' || !this.route)) {
+          this.route = TRACKER_ROUTE;
+        }
+      }, 2000);
+    } else if (oldValue === undefined) {
+      // other initial value, ignore
+    } else if (newValue === false && this.route === TRACKER_ROUTE) {
+      this.route = this.defaultRoute;
+    }
+  },
+
+  /**
+   * Triggered on a request to share. Creates sharing popup for the specified service (passed as
+   * detail of event).
+   */
+  onShare: function(e, detail) {
+    var network = detail.network;
+    var url = detail.url || window.location.href;
+    var route = this.route || '';
+    var title = this.$.strings.s('scene-' + route) || this.$.strings.s('santatracker') || '';
+    var hashtags = ['santatracker'];
+
+    switch (route) {
+    case 'snowflake':
+      hashtags.push('codeasnowflake');
+      if (detail.overlay) {
+        // If this was from the overlay / share button prompt, use the longer messaage.
+        title = this.$.strings.s('snowflake_make_your_own');
+      }
+      break;
+    }
+
+    window.ga('send', 'social', network, 'share', '/' + route);
+
+    var shareUrl = this._findShareUrl(network, url, hashtags, title);
+    if (network === 'webshare' && navigator.share) {
+      navigator.share({title: title, url: url});
+    } else if (shareUrl) {
+      var opts = 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,width=800,height=600';
+      window.open(shareUrl, '', opts);
+    }
+  },
+
+  /**
+   * Returns the URL to popup open in response to a sharing action.
+   */
+  _findShareUrl: function(network, url, hashtags, title) {
+    var enc = window.encodeURIComponent(url);
+
+    switch (network) {
+    case 'gplus':
+      var out = 'https://plus.google.com/share?url=' + enc;
+      if (window.requestLang) {
+        out += '&hl=' + window.requestLang;
+      }
+      return out;
+    case 'twitter':
+      var out = 'https://twitter.com/intent/tweet?hashtags=' + hashtags.join(',') + '&text=' +
+          window.encodeURIComponent(title) + '&url=' + enc;
+      if (window.requestLang) {
+        out += '&lang=' + window.requestLang;
+      }
+      return out;
+    case 'facebook':
+      return 'https://facebook.com/sharer.php?p[url]=' + enc;
+    }
+  },
+
+  /**
+   * Notifies bound properties that the houses have changed (useful for the
+   * village). Dedups with a microtask.
+   * @private
+   */
+  _notifyHouses: function() {
+    this.debounce('_notifyHouses', function() {
+      if (!this.$.village.is) {
+        return;  // the village isn't yet a Polymer element, so ignore.
+      }
+
+      // TODO(samthor): Notify all properties that might change. Polymer 1.x+ cannot use O.o, and
+      // there's no way to notify a whole house.
+      var propertiesToNotify = ['locked', 'disabled'];
+
+      this._houses.forEach(function(house, i) {
+        var path = ['houses', i, ''];
+        propertiesToNotify.forEach(function(property) {
+          path[2] = property;
+          this.$.village.notifyPath(path, house[property]);
+        }, this);
+      }, this);
+    });
+  },
+
+  /**
+   * Returns the (static) color for the given route. Returns the blank string if there is no color.
+   */
+  colorForRoute: function(route) {
+    var el = this.$.lazypages.getRoute(route);
+    return (el ? el.getAttribute('header-color') : '') || '';
+  },
+
+  omitSantaChrome: function(mode) {
+    return mode == 'cast' || mode == 'embed';
+  },
+
+  _limitTodayHouseForCast: function(todayHouse, mode) {
+    return mode === 'cast' ? null : todayHouse;
+  },
+
+  _limitHousesForCast: function(houses, mode) {
+    if (mode === 'cast') {
+      return houses.slice(0, 3);
+    } else {
+      return houses;
+    }
+  },
+
+  /**
+   * Converts the map of routes -> YouTube IDs to an array of routes.
+   */
+  _computeVideoRoutes: function(videos) {
+    return Object.keys(videos);
+  },
+
+  /**
+   * Converts the route to a YouTube ID.
+   */
+  _computeVideoId: function(videos, route) {
+    return videos[route];
+  },
+
+});
+
+})();
+</script>
+</dom-module>

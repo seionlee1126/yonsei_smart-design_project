@@ -1,0 +1,247 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../components/polymer/polymer.html">
+<link rel="import" href="../../components/iron-icon/iron-icon.html">
+<link rel="import" href="../santa-app-behavior.html">
+<link rel="import" href="../santa-icons.html">
+<link rel="import" href="santa-overlay_module.html">
+
+<!--
+Shared overlay for Santa Tracker games.
+-->
+<dom-module id="santa-overlay">
+<template>
+  <style include="santa-overlay_module"></style>
+
+  <div id="background" class="fit"></div>
+  <div id="main" class="fit" on-click="_onMainClick">
+    <div id="bigbutton" hidden$="[[_computeButtonHidden(pregame, _hasValidScore, shareUrl)]]">
+      <button id="start" on-mousedown="_onStartDown" on-touchstart="_onStartDown" on-click="_onStartClick"></button>
+    </div>
+    <div id="hero"
+        style$="[[_computeBackgroundStyle(hero)]]"
+        class$="[[_computeHeroClass(_hasValidScore, shareUrl)]]"
+        hidden$="[[!_computeButtonHidden(pregame, _hasValidScore, shareUrl)]]">
+      <div hidden$="[[!_hasValidScore]]">
+        <h2><i18n-msg msgid="gameover">PLACEHOLDER_i18n</i18n-msg></h3>
+        <div hidden$="[[!score]]">
+          <h4><i18n-msg msgid="gameover_score">PLACEHOLDER_i18n</i18n-msg></h4>
+          <div class="score">[[score]]</div>
+        </div>
+      </div>
+    </div>
+    <div id="controls" hidden$="[[pregame]]">
+      <section id="controlArea">
+        <button class="Button" on-click="_onPlayAgainClick"><i18n-msg msgid="playagain">PLACEHOLDER_i18n</i18n-msg></button>
+        <button class="Button" hidden$="[[!playExtra]]" on-click="_onPlayExtraClick">
+          <i18n-msg msgid="playextra">PLACEHOLDER_i18n</i18n-msg>
+        </button>
+        <a class="Button" href$="[[urlFor('village')]]"><i18n-msg msgid="santasvillage">PLACEHOLDER_i18n</i18n-msg></a>
+      </section>
+      <section class$="[[_computeShareAreaClass(shareUrl)]]">
+        <div hidden$="[[!shareUrl]]">
+          <h4><i18n-msg msgid="copy-me-short">PLACEHOLDER_i18n</i18n-msg></h4>
+          <input id="url" type="url" readonly value="[[shortShareUrl]]" on-click="_selectUrl" />
+        </div>
+        <div id="shareButtons" on-tap="_onShare">
+          <template is="dom-repeat" items="[[shareOptions]]">
+            <button class="Button Button--share" id$="[[item]]">
+              <iron-icon icon$="santa:share-[[item]]"></iron-icon>
+            </button>
+          </template>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</template>
+<script>
+(function() {
+
+function shortenUrl(url, cb) {
+  var key = 'AIzaSyA4LaOn5d1YRsJIOTlhrm7ONbuJ4fn7AuE';
+  var x = new XMLHttpRequest();
+  x.open('POST', 'https://www.googleapis.com/urlshortener/v1/url?key=' + key);
+  x.responseType = 'json';
+  x.onload = function() {
+    cb && cb(x.response['id'] || url);
+  };
+  x.onerror = function() {
+    cb && cb(url);
+  };
+  x.setRequestHeader('Content-Type', 'application/json');
+  x.send(JSON.stringify({longUrl: url}));
+}
+
+Polymer({
+  is: 'santa-overlay',
+  behaviors: [window.SantaAppBehavior],
+
+  properties: {
+
+    /** If true, shows a replay button. */
+    replay: {
+      type: Boolean,
+      value: false,
+    },
+
+    /** Score to display. Shows a "Game Over" message if non-null. */
+    score: {
+      type: Number,
+      value: null,
+    },
+
+    /** If true, shows a 'play extra levels' button. */
+    playExtra: {
+      type: Boolean,
+      value: false,
+    },
+
+    /** Whether the score is valid and non-null. */
+    _hasValidScore: {
+      type: Boolean,
+      computed: '_computeHasValidScore(score)',
+    },
+
+    /** Custom URL to share. Will be automagically shortened. */
+    shareUrl: {
+      type: String,
+      value: null,
+      observer: '_shareUrlChanged',
+    },
+
+    /** Short version of the shareUrl. Generated automagically. */
+    shortShareUrl: {
+      type: String,
+      readOnly: true,
+    },
+
+    /**
+     * Whether we are in the pregame state, showing a large start button only. Used for scenes that
+     * need to be started.
+     */
+    pregame: {
+      type: Boolean,
+      value: false,
+    },
+
+    /** Custom hero image to use for a share/gameover screen. */
+    hero: {
+      type: String,
+      value: null,
+    },
+
+    /** Sharing options available. */
+    shareOptions: Array,
+
+  },
+
+  _computeHasValidScore: function(score) {
+    return score != null;  // check for null/undefined, zero is valid score
+  },
+
+  _computeHeroClass: function(hasValidScore, shareUrl) {
+    return hasValidScore ? '' : 'share';
+  },
+
+  _computeShareAreaClass: function(shareUrl) {
+    return shareUrl ? 'background' : '';
+  },
+
+  _computeButtonHidden: function(pregame, hasValidScore, shareUrl) {
+    return hasValidScore || shareUrl;
+  },
+
+  _selectUrl: function() {
+    this.$.url.select();
+  },
+
+  _shareUrlChanged: function(newValue) {
+    this._setShortShareUrl(null);
+
+    if (this.shareUrl) {
+      window.ga('send', 'event', 'nav', 'share', 'overlay');
+      shortenUrl(this.shareUrl, function(shortUrl) {
+        if (shortUrl && this.shareUrl === newValue) {
+          // if valid, and URL hasn't changed...
+          this._setShortShareUrl(shortUrl);
+          this._selectUrl();
+        }
+      }.bind(this));
+    }
+  },
+
+  _computeBackgroundStyle: function(heroUrl) {
+    if (heroUrl) {
+      return 'background-image: url(' + heroUrl + ')';
+    }
+    return null;
+  },
+
+  _onStartDown: function() {
+    this.fire('sound-trigger', 'generic_button_click');
+  },
+
+  _onStartClick: function() {
+    // If this is the initial startButton click, hide ourselves and trigger the 'play again' flow.
+    if (this.pregame) {
+      return this._onPlayAgainClick();
+    }
+    this.fire('game-resume');
+  },
+
+  _onMainClick: function() {
+    if (this.pregame) {
+      this._onPlayAgainClick();
+    }
+  },
+
+  _onPlayAgainClick: function() {
+    window.ga('send', 'event', 'nav', 'click', 'play-again');
+    this.reset();
+    this.fire('game-start');
+  },
+
+  _onPlayExtraClick: function() {
+    window.ga('send', 'event', 'nav', 'click', 'play-extra');
+    this.reset();
+    this.fire('game-extra');
+  },
+
+  _onShare: function(ev) {
+    window.ga('send', 'event', 'nav', 'click', 'share');
+    var p = ev.target.closest('button');
+    if (p) {
+      ev.preventDefault();
+      this.fire('share', {network: p.id, url: this.shortShareUrl || this.shareUrl, overlay: true});
+    }
+  },
+
+  /**
+   * Resets the internal state of this game. Used for the restart button(s).
+   */
+  reset: function() {
+    this.pregame = false;
+    this.score = null;
+    this.playExtra = false;
+    this.shareUrl = null;
+  },
+
+});
+
+}());
+</script>
+</dom-module>

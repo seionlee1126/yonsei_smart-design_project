@@ -1,0 +1,95 @@
+$counterMargin: 7px;
+
+$digitWidth: 38px;
+$digitHeight: 27px;
+$digitLineHeight: 53px;
+
+#counter {
+  user-select: none;
+
+  .counter-box {
+    width: 77px;
+    height: 77px;
+    position: relative;
+    margin: 0 2px;
+
+    &::before {
+      content: "";
+      background: url(img/number-bg.svg);
+      background-size: contain;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0.8;
+    }
+
+    .holder {
+      font-size: 34px;
+      color: white;
+      font-weight: 700;
+      line-height: 77px;
+      height: 100%;
+      width: 100%;
+      position: absolute;
+      box-sizing: border-box;
+      transform: translateZ(0);
+      will-change: transform;
+      text-shadow: none;
+    }
+    .holder.prev {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    &.anim {
+      .holder.active {
+        animation: counter-step-active 0.4s;
+      }
+      .holder.prev {
+        animation: counter-step-prev 0.4s;
+      }
+    }
+  }
+
+  // NOTE: This is $width-twocol from village
+  @media (max-width: 600px) {
+    .counter-box {
+      width: 65px;
+      height: 65px;
+      .holder {
+        line-height: 65px;
+        font-size: 28px;
+      }
+    }
+  }
+
+  h2 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    margin: 0 !important;
+  }
+
+  h2 {
+    font-size: 12px;
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: #fff;
+    margin: 6px 0;
+    line-height: 12px;
+    text-transform: uppercase;
+  }
+}
+
+@keyframes counter-step-active {
+  0% { transform: translateY(50%); opacity: 0; }
+  100% { transform: translateY(0%); opacity: 1; }
+}
+@keyframes counter-step-prev {
+  0% { transform: translateY(0%); opacity: 1; }
+  100% { transform: translateY(-50%); opacity: 0; }
+}

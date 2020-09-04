@@ -1,0 +1,126 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+
+<link rel="import" href="../../../components/app-storage/app-localstorage/app-localstorage-document.html">
+<link rel="import" href="../../../components/polymer/polymer.html">
+<dom-module id="smatch-storage">
+  <template>
+    <app-localstorage-document
+        id="firstPlay"
+        key="smatch.firstPlay"
+        data="{{firstPlay}}">
+    </app-localstorage-document>
+    <app-localstorage-document
+        id="unlocks"
+        key="smatch.unlocks"
+        data="{{unlocks}}">
+    </app-localstorage-document>
+    <app-localstorage-document
+        id="version"
+        key="smatch.storageVersion"
+        data="{{storageVersion}}">
+    </app-localstorage-document>
+  </template>
+  <script>
+    (function() {
+      var DEFAULT_UNLOCK_IDS = [
+        "elf1",
+        "elf2",
+        "penguin",
+        "gingerbreadman",
+        "rudolph",
+      ];
+
+      var DEFAULT_UNLOCKS = [
+        "snowman",
+        "trex",
+        "bear",
+        "santa",
+        "gingerbreadman",
+        "mrsclaus",
+        "penguin",
+        "rudolph",
+        "elf1",
+        "elf2",
+      ].reduce(function(unlocks, key) {
+        unlocks[key] = DEFAULT_UNLOCK_IDS.indexOf(key) !== -1;
+        return unlocks;
+      }, {});
+
+      var STORAGE_VERSION = 1;
+
+      Polymer({
+        is: 'smatch-storage',
+
+        properties: {
+          storageVersion: {
+            type: Number,
+            value: STORAGE_VERSION,
+            observer: '_migrateStorage'
+          },
+
+          firstPlay: {
+            type: Boolean,
+            notify: true,
+            readOnly: true,
+            value: true,
+          },
+
+          unlocks: {
+            type: Object,
+            notify: true,
+            value: function() {
+              return Object.assign({}, DEFAULT_UNLOCKS);
+            },
+          },
+        },
+
+        observers: [
+          '_migrateStorage(storageVersion, version)'
+        ],
+
+        recordFirstPlay: function() {
+          return this.$.firstPlay.transactionsComplete.then(function() {
+            this._setFirstPlay(false);
+          }.bind(this));
+        },
+
+        _migrateStorage: function(storageVersion) {
+          if (storageVersion != null && storageVersion !== STORAGE_VERSION) {
+            console.log('Smatch storage version (' + storageVersion + ') is out of date...');
+            var storageMigrates = Promise.resolve();
+            for (var i = storageVersion; i < STORAGE_VERSION;) {
+              var migration = '_migrateTo' + i;
+              if (this[migration] == null) {
+                continue;
+              }
+              console.log('Migrating smatch storage to version', i);
+              storageMigrates =
+                  storageMigrates.then(function() { this[migration](); }.bind(this));
+            }
+            storageMigrates.then(function() { this.storageVersion = STORAGE_VERSION; }.bind(this));
+          }
+        },
+
+        _migrateTo1: function() {
+          return this.$.unlocks.transactionsComplete.then(function() {
+            this.unlocks = Object.assign({}, DEFAULT_UNLOCKS);
+          }.bind(this));
+        }
+      });
+    }());
+
+  </script>
+</dom-module>

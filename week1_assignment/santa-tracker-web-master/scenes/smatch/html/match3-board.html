@@ -1,0 +1,757 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
+<link rel="import" href="../../../components/iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="match3-gem.html">
+
+<dom-module id="match3-board">
+  <template>
+    <style>
+      :host {
+        display: block;
+        position: relative;
+        background-color: rgba(255, 255, 255, 0.5);
+        overflow: hidden;
+      }
+
+      match3-gem {
+        position: absolute;
+      }
+    </style>
+  </template>
+  <script>
+    (function() {
+      const TRANSITION_TIME = 300;
+      const DEFAULT_CELL_SIZE = window.Match3GemElement.DEFAULT_SIZE;
+
+      const timePasses = function(ms) {
+        return new Promise(function(resolve) {
+          setTimeout(resolve, ms);
+        });
+      };
+
+      function Cell(position, gem) {
+        this.position = position;
+        this.gem = gem;
+      }
+
+      Cell.prototype = {
+        hasSameGemAs: function(otherCell) {
+          return otherCell != null &&
+              this.gem.graphic === otherCell.gem.graphic;
+        }
+      };
+
+
+      function Point(x, y) {
+        this.x = x == null ? 0 : x;
+        this.y = y == null ? 0 : y;
+      }
+
+      Point.prototype = {
+        copy: function(point) {
+          this.x = point.x;
+          this.y = point.y;
+        },
+
+        toTransform: function(cellSize) {
+          if (cellSize == null) {
+            cellSize = DEFAULT_CELL_SIZE;
+          }
+
+          return 'translate(' +
+              (this.x * cellSize) + 'px, ' + (this.y * cellSize) + 'px)';
+        }
+      };
+
+
+      function Graphic(type, asset) {
+        this.type = type;
+        this.asset = asset;
+      }
+
+
+      function GemFactory() {
+        this.free_ = [];
+      }
+
+      GemFactory.prototype = {
+        create: function(graphic, size) {
+          let gem;
+
+          if (size == null) {
+            size = DEFAULT_CELL_SIZE;
+          }
+
+          if (this.free_.length) {
+            gem = this.free_.pop();
+          } else {
+            gem = document.createElement('match3-gem');
+          }
+
+          gem.graphic = graphic;
+          gem.size = size;
+
+          return gem;
+        },
+
+        destroy: function(gem) {
+          gem.reset();
+          this.free_.push(gem);
+        }
+      };
+
+
+      window.Match3BoardElement = Polymer({
+        is: 'match3-board',
+
+        behaviors: [
+          Polymer.IronA11yKeysBehavior,
+          Polymer.IronResizableBehavior
+        ],
+
+        properties: {
+          started: {
+            type: Boolean,
+            readOnly: true,
+            value: false
+          },
+
+          cellSize: {
+            type: Number,
+            value: DEFAULT_CELL_SIZE
+          },
+
+          graphics: {
+            type: Array,
+            value: function() {
+              return [
+                new Graphic('color', 'red'),
+                new Graphic('color', 'green'),
+                new Graphic('color', 'blue'),
+                new Graphic('color', 'yellow')
+              ];
+            }
+          },
+
+          size: {
+            type: Number,
+            value: 6
+          },
+
+          baseTabIndex: {
+            type: Number,
+            value: 1
+          },
+
+          ticking_: {
+            type: Promise,
+            value: null
+          },
+
+          grid_: {
+            type: Array,
+            computed: 'computeGrid_(size, cellSize, gemCells_, gemFactory_, graphics)',
+            observer: 'gridChanged_'
+          },
+
+          gemCells_: {
+            type: WeakMap,
+            readOnly: true,
+            value: function() {
+              // IE11 has basic support for WeakMap
+              return new WeakMap();
+            }
+          },
+
+          gemFactory_: {
+            type: GemFactory,
+            value: function() {
+              return new GemFactory();
+            }
+          },
+
+          /** Whether we are currently tracking a gem move. This prevents multiple moves. */
+          pendingMove_: {
+            type: Boolean,
+            value: false
+          }
+        },
+
+        keyBindings: {
+          'up': 'onUpKey_',
+          'down': 'onDownKey_',
+          'left': 'onLeftKey_',
+          'right': 'onRightKey_'
+        },
+
+        listeners: {
+          'track': 'onTrack_',
+        },
+
+        observers: [
+          '_updateBoardSize(size, cellSize)'
+        ],
+
+        start: function() {
+          this._setStarted(true);
+          return this.fill_(false).then(function() {
+            return this.tick_();
+          }.bind(this));
+        },
+
+        /**
+         * Queues a single tick of the game logic. A tick will:
+         *  1. Compute matches. If there are no matches, stop ticking.
+         *  2. Remove matches from the board.
+         *  3. Cause overhanging gems to fall to the bottom of their columns
+         *  4. Fill partial columns to the top with more gems
+         * After the four steps are completed, another tick will be attempted.
+         * @return {Promise} A promise that resolves when all queued ticks have
+         * completed.
+         */
+        tick_: function() {
+          if (this.ticking_) {
+            // This doesn't really queue 'another' tick, as the initial tick
+            // won't complete while there are still more matches available.
+            return this.ticking_;
+          }
+
+          const internalTick = function() {
+            const matches = this.match_();
+            const self = this;
+
+            if (matches.size === 0) {
+              this.fire('will-finish-ticking');
+              this.ticking_ = null;
+              return;
+            }
+
+            this.fire('will-remove-matches', { matches: matches });
+            this.fire('sound-trigger', 'pd_player_present_pickup');
+            window.ga('send', 'event', 'game', 'match', 'smatch');
+
+            return this.removeCells_(matches)
+                .then(function() { return self.fall_() })
+                .then(function() { return self.fill_(true) })
+                .then(internalTick);
+          }.bind(this);
+
+          return this.ticking_ = timePasses(TRANSITION_TIME).then(internalTick);
+        },
+
+        /**
+         * @param {Set} cells A set of cells to be removed.
+         * @return {Promise} A promise that resolves after the cells have
+         * finished transitioning away and are fully removed.
+         */
+        removeCells_: function(cells) {
+          cells.forEach(function(cell) {
+            this.clearCellAtPosition_(cell.position);
+            this.destroyCell_(cell);
+          }, this);
+
+          return timePasses(TRANSITION_TIME);
+        },
+
+        /**
+         * Fills partial columns top the top with more gems.
+         * @param {boolean} allowMatches Whether to allow new matches.
+         * @return {Promise} A promise that resolves when transitions have
+         * completed.
+         */
+        fill_: function(allowMatches) {
+          for (let x = 0; x < this.size; ++x) {
+            let y0 = 0;
+
+            for (let y = this.size - 1; y >= 0; --y) {
+              if (this.cellAtXy_(x, y) != null) {
+                continue;
+              }
+
+              let cell;
+              for (let i = 0; i < 5; ++i) {  // try at most 5 times
+                cell = this.createCell_(x, --y0);
+                cell.position.y = y;
+                if (allowMatches || !this.wouldMatch_(cell)) {
+                  break;
+                } else {
+                  this.destroyCell_(cell);
+                }
+              }
+              this.placeCell_(cell);
+            }
+          }
+
+          return timePasses(TRANSITION_TIME);
+        },
+
+        /**
+         * Test whether placing the given cell at its location would cause a match.
+         * @param {Cell} cell Cell to test.
+         * @return {boolean} Whether the addition would cause a match.
+         */
+        wouldMatch_: function(cell) {
+          const walk = function(dx, dy) {
+            let ox = cell.position.x;
+            let oy = cell.position.y;
+
+            for (let i = 0;; ++i) {
+              ox += dx;
+              oy += dy;
+              const nextCell = this.cellAtXy_(ox, oy);
+              if (nextCell == null || !nextCell.hasSameGemAs(cell)) {
+                return i;
+              }
+            }
+          }.bind(this);
+          return (walk(+1, 0) + walk(-1, 0)) >= 2 || (walk(0, +1) + walk(0, -1)) >= 2;
+        },
+
+        /**
+         * @return {Set<Cell>} A set of cells that are members of at least one
+         * contiguous row or column of three.
+         */
+        match_: function() {
+          const matched = new Set();
+
+          for (let x = 0; x < this.size; ++x) {
+            for (let y = 0; y < this.size; ++y) {
+              const cell = this.cellAtXy_(x, y);
+
+              if (cell == null) {
+                continue;
+              }
+
+              for (let dx = 1, dy = 0; dx >= 0 && dy <= 1; --dx, ++dy) {
+                const run = [];
+                let ox = x;
+                let oy = y;
+
+                for (;;) {
+                  const nextCell = this.cellAtXy_(ox, oy);
+                  if (nextCell == null || !nextCell.hasSameGemAs(cell)) {
+                    break;
+                  }
+                  run.push(nextCell);
+                  ox += dx;
+                  oy += dy;
+                }
+
+                if (run.length >= 3) {
+                  for (let i = 0; i < run.length; ++i)  {
+                    matched.add(run[i]);
+                  }
+                }
+              }
+            }
+          }
+
+          return matched;
+        },
+
+        /**
+         * Re-order gems as though they have "fallen" through empty cells to the
+         * bottom of their respective columns.
+         * @return {Promise} A promise that resolves when overhanging gems have
+         * finished transitioning to the bottom of their respective columns.
+         */
+        fall_: function() {
+          for (let x = 0; x < this.size; ++x) {
+            const column = [];
+
+            // Collect all non-null cells in the column. These are the gems that
+            // need to "fall".
+            for (let y = 0; y < this.size; ++y) {
+              const previous = this.cellAtXy_(x, y);
+
+              if (previous != null) {
+                column.push(previous);
+              }
+            }
+
+            // Fill the column from the bottom-up with the remaining gems in the
+            // column.
+            for (let y = 0; y < this.size; ++y) {
+              const nextY = this.size - y - 1;
+
+              if (y < column.length) {
+                const index = column.length - y - 1;
+                const cell = column[index];
+
+                if (cell.position.y !== nextY) {
+                  cell.position.y = nextY;
+                  this.placeCell_(cell);
+                }
+              } else {
+                this.clearCellAtXy_(x, nextY);
+              }
+            }
+          }
+
+          return timePasses(TRANSITION_TIME);
+        },
+
+        /**
+         * @param {Cell} cell A cell to find the neighbor for.
+         * @param {string} direction The direction of the neighbor to find,
+         * relative to the cell.
+         * @return {?Cell} The neighboring cell if any in the grid.
+         */
+        neighborCell_: function(cell, direction) {
+          let x = cell.position.x;
+          let y = cell.position.y;
+
+          switch (direction) {
+            case 'up':
+              y = y - 1;
+              break;
+            case 'down':
+              y = y + 1;
+              break;
+            case 'left':
+              x = x - 1;
+              break;
+            case 'right':
+              x = x + 1;
+              break;
+          }
+
+          return this.cellAtXy_(x, y);
+        },
+
+        /**
+         * Moves a gem in the specified direction. Does nothing if the game
+         * is ticking.
+         * @param {HTMLElement} gem The gem to move.
+         * @param {string} direction The direction to move the gem.
+         * @return {boolean} True if the gem was successfully moved, otherwise
+         * false.
+         */
+        moveGem_: function(gem, direction) {
+          // Disable moves when ticking...
+          if (this.ticking_) {
+            return false;
+          }
+
+          const cell = this.gemCells_.get(gem);
+
+          if (cell == null) {
+            return false;
+          }
+
+          const otherCell = this.neighborCell_(cell, direction);
+
+          if (otherCell == null) {
+            return false;
+          }
+
+          this.swap_(cell, otherCell);
+          this.tick_();
+
+          return true;
+        },
+
+        /**
+         * @param {CustomEvent} event
+         */
+        onUpKey_: function(event) {
+          const gem = event.detail.keyboardEvent.target;
+          this.moveGem_(gem, 'up');
+        },
+
+        /**
+         * @param {CustomEvent} event
+         */
+        onDownKey_: function(event) {
+          const gem = event.detail.keyboardEvent.target;
+          this.moveGem_(gem, 'down');
+        },
+
+        /**
+         * @param {CustomEvent} event
+         */
+        onLeftKey_: function(event) {
+          const gem = event.detail.keyboardEvent.target;
+          this.moveGem_(gem, 'left');
+        },
+
+        /**
+         * @param {CustomEvent} event
+         */
+        onRightKey_: function(event) {
+          const gem = event.detail.keyboardEvent.target;
+          this.moveGem_(gem, 'right');
+        },
+
+        /**
+         * @param {CustomEvent} event
+         */
+        onTrack_: function(event) {
+          if (event.detail.state === 'start') {
+            this.pendingMove_ = true;
+          } else if (!this.pendingMove_) {
+            return;  // no pending move
+          }
+
+          const threshold = (this.cellSize * 0.2);
+
+          let dir;
+          if (event.detail.dx > threshold) {
+            dir = 'right';
+          } else if (event.detail.dx < -threshold) {
+            dir = 'left';
+          } else if (event.detail.dy > threshold) {
+            dir = 'down';
+          } else if (event.detail.dy < -threshold) {
+            dir = 'up';
+          } else {
+            return;
+          }
+
+          this.pendingMove_ = false;
+          this.moveGem_(event.target, dir);
+        },
+
+        /**
+         * @param {number} x The x coordinate of the grid cell.
+         * @param {number} y The y coordinate of the grid cell.
+         * @return {number} The index of the coordinates in the grid array.
+         */
+        gridIndexForXy_: function(x, y) {
+          return this.size * y + x;
+        },
+
+        /**
+         * @param {Point} position A coordinate in the grid.
+         * @return {number} The index of the coordinates in the grid array.
+         */
+        gridIndexForPosition_: function(position) {
+          return this.gridIndexForXy_(position.x, position.y);
+        },
+
+        /**
+         * @param {number} x The x coordinate of the grid cell.
+         * @param {number} y The y coordinate of the grid cell.
+         * @return {?Cell} The cell at the requested (x, y) coordinates in the
+         * grid.
+         */
+        cellAtXy_: function(x, y) {
+          if (!this.xyInGrid_(x, y)) {
+            return null;
+          }
+
+          return this.grid_[this.gridIndexForXy_(x, y)];
+        },
+
+        /**
+         * @param {Point} position A coordinate in the grid.
+         * @return {?Cell} The cell that exists at the given position in the grid.
+         */
+        cellAtPosition_: function(position) {
+          return this.cellAtXy_(position.x, position.y);
+        },
+
+        /**
+         * @param {number} x The x coordinate of the grid cell.
+         * @param {number} y The y coordinate of the grid cell.
+         * @return {boolean} True if the coordinates are within the bounds of the
+         * current grid.
+         */
+        xyInGrid_: function(x, y) {
+          if (x < 0
+              || x >= this.size
+              || y < 0
+              || y >= this.size) {
+            return false;
+          }
+
+          return true;
+        },
+
+        /**
+         * @param {Point} position A coordinate to check against the bounds of the
+         * grid.
+         * @return {boolean} True if the position is within the bounds of the
+         * current grid.
+         */
+        positionInGrid_: function(position) {
+          return this.xyInGrid_(position.x, position.y);
+        },
+
+        /**
+         * @param {Cell} cell The new cell to set in the grid. The position of the
+         * cell must be within the bounds of the grid.
+         * @return {?Cell} The cell that previously occupied the position of the
+         * newly set cell, if any.
+         */
+        placeCell_: function(cell) {
+          if (!this.positionInGrid_(cell.position)) {
+            return null;
+          }
+
+          const index = this.gridIndexForPosition_(cell.position);
+          const oldCell = this.grid_[index];
+          const cellSize = this.cellSize;
+
+          cell.gem.tabIndex = this.baseTabIndex + index;
+
+          // TODO: the first one ensures the first placement, second animates. But why?
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              cell.gem.style.transform = cell.position.toTransform(cellSize);
+            })
+          });
+
+          this.grid_[index] = cell;
+
+          return oldCell;
+        },
+
+        /**
+         * Clears the cell in the grid at the provided (x, y) coordinates.
+         * @param {number} x The x coordinate of the grid cell.
+         * @param {number} y The y coordinate of the grid cell.
+         * @return {?Cell} The cell that previously existed at the given
+         * coordinates, if any.
+         */
+        clearCellAtXy_: function(x, y) {
+          if (!this.xyInGrid_(x, y)) {
+            return null;
+          }
+
+          const index = this.gridIndexForXy_(x, y);
+          const oldCell = this.grid_[index];
+
+          this.grid_[index] = null;
+
+          return oldCell;
+        },
+
+
+        /**
+         * Clears the cell in the grid at the provided position.
+         * @param {Point} position A coordinate in the grid.
+         * @return {?Cell} The cell that previously existed at the given
+         * coordinates, if any.
+         */
+        clearCellAtPosition_: function(position) {
+          return this.clearCellAtXy_(position.x, position.y);
+        },
+
+        /**
+         * Swaps the positions of two cells in the grid.
+         * @param {Cell} cell The first cell to swap.
+         * @param {Cell} otherCell The second cell to swap.
+         */
+        swap_: function(cell, otherCell) {
+          const x = cell.position.x;
+          const y = cell.position.y;
+
+          cell.position.x = otherCell.position.x;
+          cell.position.y = otherCell.position.y;
+
+          otherCell.position.x = x;
+          otherCell.position.y = y;
+
+          this.placeCell_(cell);
+          this.placeCell_(otherCell);
+        },
+
+        /**
+         * @param {number} [x=0] The initial x coordinate of the cell.
+         * @param {number} [y=0] The initial y coordinate of the cell.
+         * @return {Cell} A new Cell instance.
+         */
+        createCell_: function(x, y) {
+          if (x == null) {
+            x = 0;
+          }
+
+          if (y == null) {
+            y = 0;
+          }
+
+          const gem = this.gemFactory_.create(
+              this.randomGraphic_(), this.cellSize);
+          const cell = new Cell(new Point(x, y), gem);
+
+          this.gemCells_.set(gem, cell);
+
+          gem.style.transform = cell.position.toTransform(this.cellSize);
+
+          Polymer.dom(this.root).appendChild(gem);
+
+          return cell;
+        },
+
+        /**
+         * Deallocates the gem and position associated with a cell.
+         * @param {Cell} cell The cell to deallocate.
+         */
+        destroyCell_: function(cell) {
+          this.gemCells_.delete(cell.gem);
+          this.gemFactory_.destroy(cell.gem);
+        },
+
+        /**
+         * @return {?Graphic} A randomly selected graphic from the configured
+         * set of gem graphics.
+         */
+        randomGraphic_: function() {
+          if (this.graphics == null) {
+            return null;
+          }
+
+          const index = Math.floor(Math.random() * this.graphics.length);
+          return this.graphics[index];
+        },
+
+        /**
+         * @return {Array} An empty grid.
+         */
+        computeGrid_: function() {
+          return [];
+        },
+
+        /**
+         * @param {Array} grid The new grid.
+         * @param {Array=} oldGrid The old grid, if any.
+         */
+        gridChanged_: function(grid, oldGrid) {
+          if (oldGrid != null) {
+            for (let i = 0; i < oldGrid.length; ++i) {
+              this.destroyCell_(oldGrid[i]);
+            }
+
+            if (this.started) {
+              this.fill_();
+            }
+          }
+        },
+
+        _updateBoardSize: function() {
+          const length = this.size * this.cellSize + 'px';
+          this.style.width = this.style.height = length;
+          this.notifyResize();
+        }
+      });
+
+      window.Match3BoardElement.Graphic = Graphic;
+    })();
+
+  </script>
+</dom-module>

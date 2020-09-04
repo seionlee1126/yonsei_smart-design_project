@@ -1,0 +1,72 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="">
+  <title>Google Santa Tracker Schedule</title>
+</head>
+<body>
+  <h1>Schedule</h1>
+  <ul id="schedule"></ul>
+
+  <script src="js/config.js"></script>
+  <script src="js/houses.js"></script>
+
+  <script>
+    var loc = location.href;
+    var pageUrl = loc.substr(0, loc.lastIndexOf('/schedule.html'));
+    var scheduleEl = document.getElementById('schedule');
+
+    // nb. houses unlock in user local time
+
+    function renderHouse(house) {
+      var module = house.module;
+      var date = house.launchDate;
+      var t = date.getTime() - 10 * 1000;  // minus 10 seconds so we can watch the house open
+      var url = pageUrl + '/?timestamp_override=' + t;
+
+      var li = document.createElement('li');
+      li.innerHTML = date.toISOString().substring(0, 10) + ': <a href="' + url + '#village">Village</a>/<a href="' + url + '#' + module + '">Scene</a>: ' + module;
+      scheduleEl.appendChild(li);
+    }
+    HOUSES.forEach(function(house) {
+      house.length ? house.forEach(renderHouse) : renderHouse(house);
+    });
+
+    // ... but santa takes off at a consistent UTC time
+
+    var t = +new Date(window.SANTA_CONFIG['COUNTDOWN_END_DATE'] - (30 * 1000));
+    var url = pageUrl + '/?timestamp_override=' + t;
+    var li = document.createElement('li');
+    li.innerHTML = '30 seconds before take off: <a href="' + url + '#village">Village</a> <a href="' + url + '#tracker">Tracker</a>';
+    scheduleEl.appendChild(li);
+
+    var t = +new Date(window.SANTA_CONFIG['COUNTDOWN_END_DATE'] + (30 * 1000));
+    var url = pageUrl + '/?timestamp_override=' + t;
+    var li = document.createElement('li');
+    li.innerHTML = '30 seconds after take off: <a href="' + url + '#village">Village</a> <a href="' + url + '#tracker">Tracker</a>';
+    scheduleEl.appendChild(li);
+
+    var t = +new Date(window.SANTA_CONFIG['COUNTDOWN_END_DATE'] + (150 * 60 * 1000));
+    var url = pageUrl + '/?timestamp_override=' + t;
+    var li = document.createElement('li');
+    li.innerHTML = '2:30 hrs after take off: <a href="' + url + '#village">Village</a> <a href="' + url + '#tracker">Tracker</a>';
+    scheduleEl.appendChild(li);
+
+  </script>
+</body>
+</html>

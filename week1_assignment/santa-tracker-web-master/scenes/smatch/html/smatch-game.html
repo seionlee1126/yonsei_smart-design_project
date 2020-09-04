@@ -1,0 +1,516 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../../components/iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../../../components/iron-media-query/iron-media-query.html">
+<link rel="import" href="match3-board.html">
+<link rel="import" href="smatch-common.html">
+<link rel="import" href="smatch-character-select.html">
+<link rel="import" href="smatch-victory-pose.html">
+<link rel="import" href="smatch-storage.html">
+<link rel="import" href="smatch-state.html">
+<link rel="import" href="smatch-tree.html">
+<link rel="import" href="smatch-team.html">
+
+<dom-module id="smatch-game">
+  <template>
+    <style>
+      :host {
+        @apply --layout-fit;
+        @apply --layout-horizontal;
+        @apply --layout-center-center;
+      }
+
+      :host(.finished) #match3,
+      :host(.share) #match3,
+      :host(.finished) smatch-team,
+      :host(.share) smatch-team,
+      :host(.finished) smatch-character-select,
+      :host(.share) smatch-character-select {
+        display: none;
+      }
+
+      :host(.started) smatch-victory-pose {
+        display: none;
+      }
+
+      :host(.share) #tree-container {
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+
+      :host(.share) smatch-tree {
+        transform-origin: center bottom;
+      }
+
+      section {
+        display: flex;
+        position: relative;
+        @apply --layout-vertical;
+        @apply --layout-center-center;
+        height: 100%;
+      }
+
+      #match3 {
+        padding-left: 32px;
+        flex: 0 1 auto;
+        z-index: 2;
+        flex-direction: row-reverse;
+        background-color: #92E1FF;
+      }
+
+      #tree-container {
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+        height: 100%;
+        background-image: url(../img/background.jpg);
+        background-color: #5C33AE;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: center;
+        pointer-events: none;
+      }
+
+      match3-board {
+        border-radius: 8px;
+        padding: 8px;
+        margin-right: 32px;
+        background-color: #FAFAFA;
+      }
+
+      match3-gem {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
+      }
+
+      smatch-team {
+        flex: 0 0 100px;
+      }
+
+      smatch-character-select {
+        z-index: 2;
+      }
+
+      @media (orientation: landscape) and (max-width: 1024px) {
+        smatch-team {
+          position: absolute;
+          top: 0;
+          right: 0;
+          flex-direction: column;
+        }
+      }
+
+      @media (min-height: 1024px) {
+        smatch-tree {
+          transform-origin: center bottom;
+          transform: scale(1.5);
+        }
+      }
+
+      @media (max-width: 768px) {
+        :host {
+          flex-direction: column-reverse;
+        }
+
+        #match3 {
+          position: absolute;
+          align-items: flex-end;
+          justify-content: center;
+          background-color: transparent;
+          padding-left: 0;
+          left: 0;
+          bottom: 32px;
+          width: 100%;
+        }
+
+        #tree-container {
+          margin: 0;
+          flex-direction: column-reverse;
+          justify-content: space-between;
+        }
+
+        match3-board {
+          background-color: rgba(255, 255, 255, 0.5);
+          margin-right: 0;
+        }
+      }
+
+      @media (max-width: 500px) {
+        #tree-container {
+          flex-direction: column-reverse;
+        }
+
+        smatch-team {
+          position: relative;
+          transform-origin: center bottom;
+          transform: scale(0.7) translateY(150%);
+          flex-direction: row;
+        }
+
+        smatch-tree {
+          transform-origin: center bottom;
+        }
+      }
+
+      @media (max-width: 350px) {
+        #match3 {
+          padding: 0;
+          bottom: 0;
+        }
+
+        match3-board {
+          margin: 0;
+          border-radius: 0;
+        }
+      }
+
+      #landscape-warning {
+        display: none;
+        pointer-events: none;
+        @apply --layout-fit;
+        background-color: #5C33AE;
+        z-index: 10;
+      }
+
+      @media (orientation: landscape) and (max-height: 500px) {
+        #landscape-warning {
+          display: block;
+          pointer-events: all;
+        }
+      }
+
+
+      #landscape-warning .force-rotate-graphic {
+        transform: rotate(90deg) scale(-1, 1);
+        background: url(../../shared/img/rotate/rotate.svg) 50% top/contain no-repeat;
+        height: 200px;
+        left: 50%;
+        margin-left: -100px;
+        margin-top: -105px;
+        position: absolute;
+        top: 50%;
+        width: 200px;
+      }
+
+    </style>
+    <iron-media-query
+        query="(max-width: 1024px)"
+        query-matches="{{isSmallerThanDesktop}}">
+    </iron-media-query>
+    <iron-media-query
+        query="(max-width: 640px)"
+        query-matches="{{isSmallerThanTablet}}">
+    </iron-media-query>
+
+    <smatch-storage
+        id="storage"
+        first-play="{{firstPlay}}"
+        unlocks="{{unlocks}}">
+    </smatch-storage>
+
+    <smatch-state
+        id="state"
+        decorations="{{decorations}}"
+        level="{{level}}"
+        team-ids="{{teamIds}}"
+        status="{{status}}">
+    </smatch-state>
+
+    <section id="match3">
+      <match3-board
+          id="board"
+          graphics="[[gems]]"
+          cell-size="[[gemSize]]">
+      </match3-board>
+    </section>
+    <section id="tree-container">
+      <smatch-tree
+          id="tree"
+          decorations="[[decorations]]"
+          team="[[team]]"
+          level="[[level]]"
+          metrics="[[metrics]]">
+      </smatch-tree>
+      <smatch-team
+          id="team"
+          team="[[team]]"
+          gems="[[gems]]"
+          metrics="[[metrics]]"
+          level="[[level]]"
+          on-decorate="_onDecorate">
+      </smatch-team>
+    </section>
+
+    <smatch-character-select
+        id="characterSelect"
+        unlocks="[[unlocks]]"
+        team-ids="{{teamIds}}">
+    </smatch-character-select>
+
+    <smatch-victory-pose
+        characters="[[teamIds]]">
+    </smatch-victory-pose>
+
+    <div id="landscape-warning">
+      <div class="force-rotate-graphic"></div>
+    </div>
+  </template>
+  <script>
+    (function() {
+
+      const Graphic = Match3BoardElement.Graphic;
+      const BOARD_PADDING = 8;
+      const SmatchTeamMember = scenes.smatch.SmatchTeamMember;
+      const SmatchMetrics = scenes.smatch.SmatchMetrics;
+      const awaitTransition = scenes.smatch.awaitTransition;
+      const DEFAULT_GEM_SIZE = scenes.smatch.DEFAULT_GEM_SIZE;
+
+      const TABLET_GEM_SIZE = 60;
+      const PHONE_GEM_SIZE = 50;
+
+      Polymer({
+        is: 'smatch-game',
+
+        behaviors: [Polymer.IronResizableBehavior],
+
+        properties: {
+          gemSize: {
+            type: Number,
+            computed: '_computeGemSize(isSmallerThanDesktop, isSmallerThanTablet)'
+          },
+
+          decorations: {
+            type: Array,
+          },
+
+          level: {
+            type: Number,
+          },
+
+          firstPlay: {
+            type: Boolean,
+          },
+
+          status: {
+            type: String,
+            observer: '_statusChanged'
+          },
+
+          teamIds: {
+            type: Array,
+            notify: true
+          },
+
+          unlocks: {
+            type: Object,
+          },
+
+          gems: {
+            type: Array,
+            computed: '_computeGems(teamIds.length)',
+          },
+
+          team: {
+            type: Array,
+            computed: '_computeTeam(teamIds.length)',
+          },
+
+          metrics: {
+            type: SmatchMetrics,
+          },
+        },
+
+        listeners: {
+          'will-remove-matches': '_handleMatches',
+          'iron-resize': '_onIronResize',
+          'smatch-start': '_onSmatchStart'
+        },
+
+        _computeGemSize: function(isSmallerThanDesktop, isSmallerThanTablet) {
+          if (isSmallerThanTablet) {
+            return PHONE_GEM_SIZE;
+          } else if (isSmallerThanDesktop) {
+            return TABLET_GEM_SIZE;
+          }
+
+          return DEFAULT_GEM_SIZE;
+        },
+
+        _computeTeam: function() {
+          if (this.teamIds != null) {
+            const urlBase = this.resolveUrl('../img');
+            return this.teamIds.map(function(id) {
+              return new SmatchTeamMember(id, urlBase)
+            });
+          }
+        },
+
+        _computeGems: function() {
+          if (this.teamIds != null) {
+            return this.teamIds.map(function(id) {
+              return new Graphic('image',
+                this.resolveUrl('../img/ornaments/' + id + '.svg'));
+            }, this);
+          }
+        },
+
+        attached: function() {
+          this._measure();
+        },
+
+        start: function() {
+          this.$.storage.recordFirstPlay().then(function() {
+            this.$.board.start();
+          }.bind(this));
+        },
+
+        end: function() {
+          window.history.replaceState(null, null,
+              window.location.pathname + '?' + this.$.state.serialize());
+          window.santaApp.fire('game-stop', {
+            url: window.location.toString()
+          });
+        },
+
+        _measure: function() {
+          this.metrics = new SmatchMetrics(this);
+        },
+
+        _onIronResize: function() {
+          this.debounce('iron-resize', function() { this._measure() }, 100);
+        },
+
+        _onDecorate: function(event) {
+          this.push('decorations', event.detail);
+        },
+
+        _onSmatchStart: function() {
+          if (this.teamIds.length === 5) {
+            this.$.characterSelect.active = false;
+            this.start();
+          }
+        },
+
+        _handleMatches: function(event) {
+          // It's possible for there to be additional matches after the game has
+          // technically been completed (by reaching level 4). If we get a match
+          // event after this point, just ignore it.
+          if (this.status === SmatchStateElement.SHARE_STATUS) {
+            return;
+          }
+          const matches = [];
+
+          event.detail.matches.forEach(function(match) {
+            matches.push(match);
+          });
+
+          const groups = new Map();
+
+          while (matches.length) {
+            const match = matches.pop();
+            const graphic = match.gem.graphic;
+
+            if (!groups.has(graphic)) {
+              groups.set(graphic, []);
+            }
+
+            groups.get(graphic).push(match);
+          }
+
+
+          groups.forEach(function(group, graphic) {
+            const index = this.gems.indexOf(graphic);
+            this._animatedExit(group, index);
+            this.set('team.' + index + '.gemCount',
+                this.get('team.' + index + '.gemCount') + group.length);
+          }, this);
+        },
+
+        _animatedExit: function(group, teamIndex) {
+          let gemTargetTop = this.metrics.boardOriginTop
+              + this.metrics.boardTeamDeltaTop;
+          let gemTargetLeft = this.metrics.boardOriginLeft
+              + this.metrics.boardTeamDeltaLeft;
+
+          // TODO(cdata): Associate gems with specific team members. Right now
+          // the gems will flow to a team position even if no team member is
+          // is there, and without regard to which team member is there.
+          if (this.metrics.teamOffsetDimension === 'width') {
+            gemTargetTop += this.gemSize / 2;
+            gemTargetLeft += teamIndex * this.metrics.team.width / 5;
+          } else {
+            gemTargetTop += teamIndex * this.metrics.team.height / 5;
+            gemTargetLeft -= this.gemSize / 2;
+          }
+
+          const container = Polymer.dom(this.root);
+
+          group.forEach(function(cell, index) {
+            // TODO(cdata): Shared gem factory?
+            const temporaryGem =
+                this.$.board.gemFactory_.create(cell.gem.graphic, this.gemSize);
+            const gemTop = this.metrics.boardOriginTop
+                + cell.position.y * this.gemSize + BOARD_PADDING;
+            const gemLeft = this.metrics.boardOriginLeft
+                + cell.position.x * this.gemSize + BOARD_PADDING;
+            const self = this;
+
+            temporaryGem.style.transform =
+                'translate(' + gemLeft + 'px, ' + gemTop + 'px)';
+            temporaryGem.style.transitionDelay = (index * 0.05) + 's';
+
+            container.appendChild(temporaryGem);
+
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() {
+                awaitTransition(temporaryGem).then(function() {
+                  temporaryGem.style.transitionDelay = '';
+                  container.removeChild(temporaryGem);
+                  self.$.board.gemFactory_.destroy(temporaryGem);
+                });
+
+                temporaryGem.style.transform =
+                    'translate(' + gemTargetLeft + 'px, ' + gemTargetTop +
+                        'px) scale(0.1) rotate(240deg)';
+              })
+            });
+          }, this);
+        },
+
+        _statusChanged: function(status, oldStatus) {
+          if (oldStatus != null) {
+            this.classList.remove(oldStatus);
+          }
+
+          if (status != null) {
+            this.classList.add(status);
+          }
+
+          if (status === SmatchStateElement.FINISHED_STATUS) {
+            this.end();
+          }
+        }
+      });
+
+    })();
+
+
+  </script>
+</dom-module>

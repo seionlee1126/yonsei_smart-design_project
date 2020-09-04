@@ -1,0 +1,114 @@
+<!--
+Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../scene-behavior.html">
+
+<!-- These elements have an incorrect assetpath unless included directly -->
+<link rel="import" href="html/match3-gem.html">
+<link rel="import" href="html/smatch-unlockable.html">
+<link rel="import" href="html/smatch-decoration.html">
+<link rel="import" href="html/smatch-character.html">
+<link rel="import" href="html/smatch-portrait.html">
+
+<link rel="import" href="html/smatch-game.html">
+
+
+<!--
+Smatch scene.
+-->
+<dom-module id="smatch-scene">
+<template>
+  <style>
+    #module-smatch {
+      background-color: #D3E4ED;
+      @apply --layout-fit;
+    }
+  </style>
+  <div id="module-smatch">
+  </div>
+</template>
+<script>
+(function() {
+
+  Polymer({
+    is: 'smatch-scene',
+    behaviors: [window.SantaSceneBehavior],
+    game: null,
+
+    properties: {
+      hasClickedStart: {
+        type: Boolean,
+        value: false
+      }
+    },
+
+    hostAttributes: {
+      'header-color': '#f00'
+    },
+
+    onPreload: function() {
+      this.preloadSounds('pd_load_sounds', 30);
+      this.preloadSounds('village_load_sounds', 30);
+      this.preloadSounds('santasearch_load_sounds', 30);
+
+      var images = [
+        'img/tree/snow.svg',
+        'img/tree/star.svg',
+        'img/tree/tinsel.svg',
+        'img/tree/tree-plain.svg',
+        'img/background.jpg',
+        'img/checkmark.svg',
+      ];
+
+      var characters = [
+        'snowman',
+        'trex',
+        'bear',
+        'santa',
+        'gingerbreadman',
+        'mrsclaus',
+        'penguin',
+        'rudolph',
+        'elf1',
+        'elf2',
+      ];
+      var locations = ['characters', 'ornaments', 'portraits', 'selection-screen', 'selection-screen/selected', 'selection-screen/unavailable'];
+      locations.forEach(function(l) {
+        characters.forEach(function(c) {
+          images.push('img/' + l + '/' + c + '.svg');
+        });
+      });
+
+      this.preloadImages(images);
+    },
+
+    onShow: function() {
+      var module = this.$['module-smatch'];
+      this.game = document.createElement('smatch-game');
+      Polymer.dom(module).appendChild(this.game);
+      this.fire('sound-ambient', 'music_start_ingame');
+      this.fire('sound-ambient', 'pd_start_game');
+    },
+
+    onHide: function() {
+      Polymer.dom(this.$['module-smatch']).removeChild(this.game);
+
+      this.game = null;
+      this.fire('sound-ambient', 'pd_end_game');
+    },
+  });
+
+})();
+</script>
+</dom-module>

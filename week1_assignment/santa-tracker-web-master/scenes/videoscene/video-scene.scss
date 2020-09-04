@@ -1,0 +1,43 @@
+$name: 'module-video';
+
+##{$name} {
+  background: #000;
+
+  google-youtube {
+    z-index: 1;
+  }
+
+  #poster {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-position: 50% 50%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    z-index: 2;
+  }
+
+  #start {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 100;
+
+    .start-button {
+      background: url(img/button.svg);
+      content: '';
+      cursor: pointer;
+      height: 250px;
+      left: 50%;
+      margin-left: -125px;
+      margin-top: -125px;
+      position: absolute;
+      top: 50%;
+      width: 250px;
+    }
+  }
+}

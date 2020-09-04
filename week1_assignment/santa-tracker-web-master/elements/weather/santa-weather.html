@@ -1,0 +1,319 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../components/polymer/polymer.html">
+
+<!--
+Renders random snow and clouds across this element's surface. Used for the village and map scenes.
+-->
+<dom-module id="santa-weather">
+<template>
+  <style>
+    :host {
+      position: relative;
+      display: block;
+    }
+  </style>
+
+  <div id="holder">
+    <canvas id="snowcanvas"></canvas>
+  </div>
+
+  <slot></slot>
+
+</template>
+<script>
+(function() {
+
+var cloudImageSrc = [
+  'img/cloud1.svg',
+  'img/cloud2.svg',
+  'img/cloud3.svg',
+];
+
+Polymer({
+  is: 'santa-weather',
+
+  properties: {
+
+    active: {
+      type: Boolean,
+      observer: '_activeChanged'
+    },
+
+    /** Number of snowflakes to show. Not expected to change after init. */
+    snowflakes: {
+      type: Number,
+      value: 40,
+    },
+
+    /** Number of clouds to show. Not expected to change after init. */
+    clouds: {
+      type: Number,
+      value: 6,
+    },
+
+    /** Maximum wind speed. */
+    wind: {
+      type: Number,
+      value: 0,
+    }
+
+  },
+
+  created: function() {
+    // Bind a local copy of the function so that when called from window-based
+    // events, like 'resize', the references to this are still for the instance
+    // of the weather, and not window.
+    this._onResize = this._onResize.bind(this);
+    this._update = this._update.bind(this);
+    this._updateClouds = this._updateClouds.bind(this);
+    this._drawClouds = this._drawClouds.bind(this);
+
+    this._cloudImagesPending = cloudImageSrc.length;
+    this._cloudImages = cloudImageSrc.map(function(src) {
+      var img = new Image();
+      img.src = this.resolveUrl(src);
+      img.onload = function() {
+        --this._cloudImagesPending;
+      }.bind(this);
+      return img;
+    }, this);
+  },
+
+  ready: function() {
+    this._ctx = this.$.snowcanvas.getContext('2d');
+    this._snowflakes = [];
+    this._clouds = [];
+    this._currentWind = 0;
+    this._startTime;
+  },
+
+  attached: function() {
+    this._onResize();
+    this._createSnowflakes();
+    this._createClouds();
+    this._setWind();
+    window.addEventListener('resize', this._onResize);
+  },
+
+  detached: function() {
+    window.removeEventListener('resize', this._onResize);
+  },
+
+  _activeChanged: function() {
+    if (!this.active) {
+      return;
+    }
+
+    window.requestAnimationFrame(this._update);
+  },
+
+  _setWind: function() {
+    this.wind = 0.25 - Math.random() * 0.5;
+
+    // Wait a random amount of time (up to 15 seconds) before changing the wind
+    // direction for the snow.
+    this.async(this._setWind, Math.random() * 15000);
+  },
+
+  /**
+   * Handles the window resizing. Temporarily hides the canvas so that the
+   * container can scale to its natural size. After that's completed the
+   * canvas sizes set, and its visibility restored.
+   */
+  _onResize: function() {
+    this.$.snowcanvas.hidden = true;
+
+    var bounds = this.getBoundingClientRect();
+
+    this._width = bounds.width;
+    this._height = bounds.height;
+
+    this.$.snowcanvas.width = this._width;
+    this.$.snowcanvas.height = this._height;
+    this.$.snowcanvas.hidden = false;
+
+    // Go into a poll to wait if the element is zero by zero. Ideally this would
+    // be solved with ResizeObservers in the future.
+    if (this._width === 0 && this._height === 0) {
+      return this.async(function() {
+        this._onResize();
+      }, 1000);
+    }
+
+    // Track the start time to do a fade-in of the overall scene.
+    this._startTime = window.performance.now();
+  },
+
+  _createSnowflakes: function() {
+    var count = this._snowflakes.length;
+    this._snowflakes.length = this.snowflakes;
+
+    if (count >= this.snowflakes) {
+      return;
+    }
+
+    // Fill up any remaining gaps.
+    for (var i = count; i < this.snowflakes; ++i) {
+      this._resetSnowflake(i);
+    }
+  },
+
+  _createClouds: function() {
+    var count = this._clouds.length;
+    this._clouds.length = this.clouds;
+
+    if (count >= this.clouds) {
+      return;
+    }
+
+    // Fill up any remaining gaps.
+    for (var i = count; i < this.clouds; ++i) {
+      this._resetCloud(i, true);
+    }
+  },
+
+  _resetCloud: function(index, opt_initialView) {
+    this._clouds[index] = this._createCloud(opt_initialView);
+  },
+
+  _resetSnowflake: function(index) {
+    this._snowflakes[index] = this._createSnowflake();
+  },
+
+  _createCloud: function(opt_initialView) {
+    var width = 50 + Math.random() * 100;
+    var height = width * 0.6;
+    var x = this.wind > 0 ? -Math.random() * 0.5 : 1 + Math.random() * 0.5;
+
+    if (opt_initialView) {
+      x = Math.random();
+    }
+
+    return {
+      img: Math.floor(Math.random() * cloudImageSrc.length),
+      w: width,
+      h: height,
+      m: 4 - (width / 50),
+
+      // Adjust the start position based on the wind value. Positive wind dir
+      // should imply that the cloud starts screen left, and vice-versa.
+      x: x,
+      y: Math.random() * 0.4,
+      o: 0.2 + Math.random() * 0.7
+    }
+  },
+
+  _createSnowflake: function() {
+    return {
+      x: Math.random(),
+      y: -Math.random(),
+      ry: 0.5 + Math.random(),
+      d: 2 + Math.random() * 2,
+      o: 0.6 + Math.random() * 0.4
+    }
+  },
+
+  _update: function() {
+    if (!this.active) {
+      return;
+    }
+
+    for (var i = 0, snowflake; snowflake = this._snowflakes[i]; ++i) {
+      snowflake.x += 0.01 * this._currentWind * (1 / snowflake.d);
+      snowflake.y += 0.0002 * snowflake.d * snowflake.ry;
+
+      if (snowflake.y * this._height > this._height ||
+          snowflake.x < -0.1 ||
+          snowflake.x > 1.1) {
+        this._resetSnowflake(i);
+      }
+    }
+
+    this._updateClouds();
+
+    // Ease the actual wind value to the new wind value.
+    this._currentWind += (this.wind - this._currentWind) / 200;
+    this._draw();
+
+    window.requestAnimationFrame(this._update);
+  },
+
+  _updateClouds: function() {
+    for (var c = 0, cloud; cloud = this._clouds[c]; ++c) {
+      cloud.x += 0.001 * this._currentWind * cloud.m;
+
+      if (this.wind > 0 && cloud.x * this._width > this._width ||
+          this.wind < 0 && cloud.x * this._width < -cloud.w) {
+        this._resetCloud(c);
+      }
+    }
+  },
+
+  _draw: function() {
+    if (!this._startTime) {
+      return;
+    }
+
+    var TAU = Math.PI * 2;
+    this._ctx.fillStyle = '#FFF';
+    this._ctx.clearRect(0, 0, this._width, this._height);
+
+    for (var i = 0, snowflake; snowflake = this._snowflakes[i]; ++i) {
+      var alpha = 1;
+
+      if (snowflake.y > 0.9) {
+        // Fade out the snowflake at the end.
+        alpha = 1 - ((snowflake.y - 0.9) / 0.1);
+      }
+
+      this._ctx.globalAlpha = snowflake.o * alpha;
+      this._ctx.beginPath();
+      this._ctx.arc(
+          snowflake.x * this._width,
+          snowflake.y * this._height,
+          snowflake.d,
+          0,
+          TAU
+      );
+
+      this._ctx.closePath();
+      this._ctx.fill();
+    }
+
+    // Ensure all cloud images have loaded first before drawing any, because we
+    // don't want any magically-appearing clouds. That's not how clouds work.
+    if (!this._cloudImagesPending) {
+      this._drawClouds();
+    }
+  },
+
+  _drawClouds: function() {
+    for (var c = 0, cloud; cloud = this._clouds[c]; ++c) {
+      this._ctx.globalAlpha = cloud.o;
+      this._ctx.drawImage(
+          this._cloudImages[cloud.img],
+          cloud.x * this._width,
+          cloud.y * this._height,
+          cloud.w,
+          cloud.h
+      );
+    }
+  }
+});
+
+})();
+</script>
+</dom-module>

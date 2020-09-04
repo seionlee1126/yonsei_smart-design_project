@@ -1,0 +1,128 @@
+<!--
+Copyright 2016 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+-->
+<link rel="import" href="../../../components/polymer/polymer.html">
+<link rel="import" href="../../../components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="smatch-common.html">
+<link rel="import" href="smatch-portrait.html">
+
+<dom-module id="smatch-team">
+  <template>
+    <style>
+      :host {
+        @apply --layout-horizontal;
+        @apply --layout-center-center;
+      }
+
+      smatch-portrait {
+        width: 100%;
+        height: 100%;
+      }
+
+      @media (max-width: 640px) {
+        :host {
+          @apply --layout-horizontal;
+        }
+      }
+    </style>
+    <template is="dom-repeat" items="[[team]]" as="teamMember">
+      <smatch-portrait
+          on-flush-gems="_onFlushGems"
+          team-member="[[teamMember]]"
+          gem-graphic="[[gemGraphicFor(teamMember)]]">
+      </smatch-portrait>
+    </template>
+  </template>
+  <script>
+    (function() {
+      const SmatchTeamMember = scenes.smatch.SmatchTeamMember;
+      const SmatchMetrics = scenes.smatch.SmatchMetrics;
+      const GEM_SIZE = scenes.smatch.GEM_SIZE;
+      const TREE_BASE_WIDTH = scenes.smatch.TREE_BASE_WIDTH;
+      const TREE_TRUNK_RATIO = scenes.smatch.TREE_TRUNK_RATIO;
+
+      Polymer({
+        is: 'smatch-team',
+
+        properties: {
+          team: {
+            type: Array,
+            value: function() {
+              return [];
+            }
+          },
+
+          gems: {
+            type: Array,
+            value: function() {
+              return [];
+            }
+          },
+
+          metrics: {
+            type: SmatchMetrics
+          },
+
+          level: {
+            type: Number
+          }
+        },
+
+        _onFlushGems: function(event) {
+          const portrait = event.target;
+          const teamIndex = this.team.indexOf(portrait.teamMember);
+          const offset = this.metrics.teamOffsetLength;
+          const teamOffset = teamIndex * offset / 5 + offset / 10;
+          const portraitScale = this.metrics.tree.width / TREE_BASE_WIDTH;
+
+          const upperBound = (3 - this.level) / 4;
+          const lowerBound = (1 - TREE_TRUNK_RATIO);
+          const deltaBound = lowerBound - upperBound;
+
+          const targetTopScale =
+              (0|(Math.random() * deltaBound + upperBound) * lowerBound * 100)
+              / 100;
+          const targetLeftScale =
+              Math.random() * targetTopScale
+                  + 0.5 * (1 - targetTopScale);
+
+          let targetTop = this.metrics.teamTreeDeltaTop
+              + this.metrics.tree.height * targetTopScale;
+          let targetLeft = this.metrics.teamTreeDeltaLeft
+              + this.metrics.tree.width * targetLeftScale;
+
+          if (this.metrics.teamOffsetDimension === 'width') {
+            targetLeft -= teamOffset;
+            targetTop -= GEM_SIZE / 3;
+          } else {
+            targetLeft -= GEM_SIZE * 1.5;
+            targetTop -= teamOffset;
+          }
+
+          this.fire('decorate', {
+            x: targetLeftScale,
+            y: targetTopScale,
+            teamMember: portrait.teamMember,
+            graphic: portrait.gemGraphic
+          });
+        },
+
+        gemGraphicFor: function(teamMember) {
+          return this.gems[this.team.indexOf(teamMember)];
+        }
+      });
+    })();
+
+  </script>
+</dom-module>

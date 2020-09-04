@@ -1,0 +1,97 @@
+$line-left: 15px;
+
+& {
+  display: flex;
+  width: 100%;
+  position: relative;
+  padding-top: 20px;
+  min-width: 600px;
+
+  &::before {
+    content: '';
+    background: url(img/travelogue/travelogue-path.svg);
+    background-repeat: repeat-x;
+    position: absolute;
+    z-index: 1;
+    width: 100vw;
+    height: 14px;
+    background-size: 1360px 14px;
+    top: 77px;
+    left: $line-left;
+    opacity: .7;
+  }
+}
+
+.prev-location {
+  z-index: 2;
+  position: relative;
+  width: 150px;
+  padding-right: 8px;
+  box-sizing: border-box;
+
+  h3, h4 {
+    // from newtracker-scene, the base size
+    font-size: 11px;
+    line-height: 13px;
+  }
+
+  .marker {
+    width: 85px;
+    height: 70px;
+    position: relative;
+    display: block;
+    margin-bottom: 18px;
+
+    &::after {
+      content: '';
+      width: 47px;
+      height: 40px;
+      position: absolute;
+      bottom: 10px;
+      left: ($line-left - 21px);
+      z-index: 2;
+      background: url(img/travelogue/travelogue-marker.svg) no-repeat center bottom;
+      background-size: contain;
+    }
+
+    &::before {
+      content: '';
+      width: 23px;
+      height: 23px;
+      background: #138e60;
+      border-radius: 100px;
+      position: absolute;
+      left: ($line-left - 18px);
+      bottom: 0;
+    }
+  }
+
+  &:nth-child(1) {
+    .marker {
+      transform: translateY(-1px);
+      &::after {
+        left: ($line-left - 23px);
+        width: 94px;
+        height: 80px;
+      }
+      &::before {
+        left: ($line-left - 5px);
+      }
+    }
+  }
+  &:nth-child(2) {
+    .marker {
+      transform: translateY(8px);
+    }
+  }
+  &:nth-child(3) {
+    .marker {
+      transform: translateY(8px);
+    }
+  }
+  &:nth-child(4) {
+    .marker {
+      transform: translateY(-1px);
+    }
+  }
+}
